@@ -8,6 +8,7 @@ import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.ptsl.network_sdk.data_model.entity.AuthEntity
 import com.ptsl.network_sdk.db.NetworkDao
 import com.ptsl.network_sdk.utils.CheckPermissionHandler
@@ -23,15 +24,16 @@ import javax.inject.Inject
 class NetworkDataUploader @Inject constructor(
     private val coroutineScope: CoroutineScope,
     private val databaseDao: NetworkDao,
-    ) {
+) {
     //    private lateinit var permissionHandler: PermissionHandler
     private lateinit var checkPermissionHandler: CheckPermissionHandler
     private lateinit var context: Context
 
     fun init(activity: AppCompatActivity) {
-            checkPermissionHandler = CheckPermissionHandler(activity)
-            context = activity.applicationContext
+        checkPermissionHandler = CheckPermissionHandler(activity)
+        context = activity.applicationContext
     }
+
     fun startUploading(
         msisdn: String,
         integratedAppVersion: String,
@@ -44,16 +46,21 @@ class NetworkDataUploader @Inject constructor(
         if (this::checkPermissionHandler.isInitialized && checkPermissionHandler.isPermissionGranted()) {
             Log.d("userID", "--------> \n $msisdn \n <----------")
             coroutineScope.launch {
-                val auth = AuthEntity(msisdn = msisdn,
+                val auth = AuthEntity(
+
+
+                    sdkVersion = BuildConfig.SdkVersion,
+
+                    )
+//                databaseDao.insertAuthData(auth)
+                enqueueNetworkDataWork(auth,
+                    msisdn = msisdn,
                     integratedAppVersion = integratedAppVersion,
                     sdkInitiateTimeStamp = sdkInitiateTimeStamp,
                     integratedAppEventName = integratedAppEventName,
-                    sdkVersion = BuildConfig.SdkVersion,
                     userLatitude = userLatitude,
                     userLongitude = userLongitude
                     )
-                databaseDao.insertAuthData(auth)
-                enqueueNetworkDataWork()
                 callback(true)
             }
         } else {
@@ -62,23 +69,43 @@ class NetworkDataUploader @Inject constructor(
     }
 
     fun requestPermission(callback: (Boolean) -> Unit) {
-       if (this::checkPermissionHandler.isInitialized) {
-           if (checkPermissionHandler.isPermissionGranted())
-               callback(true)
-           else
-               checkPermissionHandler.requestPermission(callback = callback)
-       }else{
-           callback(false)
-       }
+        if (this::checkPermissionHandler.isInitialized) {
+            if (checkPermissionHandler.isPermissionGranted())
+                callback(true)
+            else
+                checkPermissionHandler.requestPermission(callback = callback)
+        } else {
+            callback(false)
+        }
     }
 
 
-    private fun enqueueNetworkDataWork() {
+    private fun enqueueNetworkDataWork(
+        authEntity: AuthEntity,
+        msisdn: String,
+        integratedAppVersion: String,
+        sdkInitiateTimeStamp: String,
+        integratedAppEventName: String,
+        userLatitude: Double = 0.0,
+        userLongitude: Double = 0.0
+    ) {
+
+        val inputData = workDataOf(
+            "msisdn" to msisdn,
+            "integratedAppVersion" to integratedAppVersion,
+            "sdkInitiateTimeStamp" to sdkInitiateTimeStamp,
+            "integratedAppEventName" to integratedAppEventName,
+            "sdkVersion" to authEntity.sdkVersion,
+            "userLatitude" to userLatitude,
+            "userLongitude" to userLongitude
+        )
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .setRequiresBatteryNotLow(true)
             .build()
-        val workRequest = OneTimeWorkRequestBuilder<NetworkDataWorker>().setConstraints(constraints).build()
+        val workRequest = OneTimeWorkRequestBuilder<NetworkDataWorker>().setConstraints(constraints)
+            .setInputData(inputData)
+            .build()
         WorkManager.getInstance(context).enqueue(workRequest)
     }
 }

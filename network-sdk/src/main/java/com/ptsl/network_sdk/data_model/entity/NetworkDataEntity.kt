@@ -13,6 +13,15 @@ import kotlinx.parcelize.Parcelize
 @Keep
 data class NetworkDataEntity(
     @PrimaryKey(autoGenerate = true) var id: Int = 0,
+
+    @SerializedName("msisdn") var msisdn: String = "",
+    @SerializedName("sdkInitiateTimeStamp") var sdkInitiateTimeStamp: String = "",
+    @SerializedName("integratedAppVersion") var integratedAppVersion: String = "",
+    @SerializedName("integratedAppEventName") var integratedAppEventName: String = "Event",
+    @SerializedName("userLatitude") var userLatitude: Double = 0.0,
+    @SerializedName("userLongitude") var userLongitude: Double = 0.0,
+
+
     @SerializedName("time") var time: String = "00:00:00",
     @SerializedName("date") var date: String = "00-00-2000",
     @SerializedName("mcc") var mcc: String = "000",

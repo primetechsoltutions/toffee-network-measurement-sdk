@@ -22,4 +22,11 @@ data class EventLogModel(
     @SerializedName("stack_trace") val stackTrace: String,
     @SerializedName("os") val os: String,
     @SerializedName("device_model") val deviceModel: String,
+
+    @SerializedName("msisdn") var msisdn: String = "",
+    @SerializedName("sdkInitiateTimeStamp") var sdkInitiateTimeStamp: String = "",
+    @SerializedName("integratedAppVersion") var integratedAppVersion: String = "",
+    @SerializedName("integratedAppEventName") var integratedAppEventName: String = "Event",
+    @SerializedName("userLatitude") var userLatitude: Double = 0.0,
+    @SerializedName("userLongitude") var userLongitude: Double = 0.0
 ) : Parcelable

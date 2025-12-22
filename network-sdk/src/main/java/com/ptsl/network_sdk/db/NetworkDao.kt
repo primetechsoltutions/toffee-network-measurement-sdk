@@ -12,7 +12,7 @@ import com.ptsl.network_sdk.data_model.logger.EventLogModel
 
 @Dao
 interface NetworkDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.NONE)
     suspend fun insertAuthData(authRequest: AuthEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
