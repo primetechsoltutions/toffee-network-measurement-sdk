@@ -49,12 +49,6 @@ fun Date.timeInMinutes(otherDateTime: Long): Long {
     return diffInMillis / (60 * 1000)
 }
 
-//fun Long.isAfter15Minutes(): Boolean {
-//    val currentTime = System.currentTimeMillis()
-//    val targetTime = this
-//    val diffInMillis = currentTime - targetTime
-//    return diffInMillis >= 15 * 60 * 100
-//}
 fun Long.isAfter15Minutes(): Boolean {
     val currentTime = System.currentTimeMillis()
     val targetTime = this

@@ -2,7 +2,6 @@ package com.ptsl.network_sdk
 
 
 import android.content.Context
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.work.Constraints
 import androidx.work.NetworkType
@@ -10,24 +9,16 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.ptsl.network_sdk.data_model.entity.AuthEntity
-import com.ptsl.network_sdk.db.NetworkDao
+import com.ptsl.network_sdk.network_data_worker.NetworkDataWorker
 import com.ptsl.network_sdk.utils.CheckPermissionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
+import com.ptsl.network_sdk.utils.SdkContainer
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 
-@FlowPreview
-@ExperimentalCoroutinesApi
-class NetworkDataUploader @Inject constructor(
-    private val coroutineScope: CoroutineScope,
-    private val databaseDao: NetworkDao,
-) {
-    //    private lateinit var permissionHandler: PermissionHandler
+class NetworkDataUploader {
     private lateinit var checkPermissionHandler: CheckPermissionHandler
     private lateinit var context: Context
+
 
     fun init(activity: AppCompatActivity) {
         checkPermissionHandler = CheckPermissionHandler(activity)
@@ -44,23 +35,19 @@ class NetworkDataUploader @Inject constructor(
         callback: (Boolean) -> Unit
     ) {
         if (this::checkPermissionHandler.isInitialized && checkPermissionHandler.isPermissionGranted()) {
-            Log.d("userID", "--------> \n $msisdn \n <----------")
-            coroutineScope.launch {
+            SdkContainer.coroutineScope.launch {
                 val auth = AuthEntity(
-
-
                     sdkVersion = BuildConfig.SdkVersion,
-
-                    )
-//                databaseDao.insertAuthData(auth)
-                enqueueNetworkDataWork(auth,
+                )
+                enqueueNetworkDataWork(
+                    auth,
                     msisdn = msisdn,
                     integratedAppVersion = integratedAppVersion,
                     sdkInitiateTimeStamp = sdkInitiateTimeStamp,
                     integratedAppEventName = integratedAppEventName,
                     userLatitude = userLatitude,
                     userLongitude = userLongitude
-                    )
+                )
                 callback(true)
             }
         } else {

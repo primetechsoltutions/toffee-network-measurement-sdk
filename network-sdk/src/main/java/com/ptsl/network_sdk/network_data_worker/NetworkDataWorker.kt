@@ -1,4 +1,4 @@
-package com.ptsl.network_sdk
+package com.ptsl.network_sdk.network_data_worker
 
 import android.Manifest
 import android.content.Context
@@ -9,7 +9,6 @@ import android.os.Build
 import android.telephony.SubscriptionManager
 import android.util.Log
 import androidx.core.app.ActivityCompat
-import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.google.android.gms.location.LocationServices
@@ -27,27 +26,21 @@ import com.ptsl.network_sdk.dl_ul_test.DownloadUploadHelper
 import com.ptsl.network_sdk.utils.prepareDate
 import cz.mroczis.netmonster.core.factory.NetMonsterFactory
 import cz.mroczis.netmonster.core.model.connection.PrimaryConnection
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedInject
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import retrofit2.HttpException
 import java.io.IOException
 
-@HiltWorker
-class NetworkDataWorker @AssistedInject constructor(
-    @Assisted appContext: Context,
-    @Assisted workerParams: WorkerParameters,
+class NetworkDataWorker(
+    appContext: Context,
+    workerParams: WorkerParameters,
     private val apiService: ApiService,
     private val downloader: DownloadUploadHelper,
     private val databaseDao: NetworkDao,
 ) : CoroutineWorker(appContext, workerParams) {
 
-    private val locationClient = LocationServices.getFusedLocationProviderClient(appContext)
 
     override suspend fun doWork(): Result {
-        Log.d("worker", "-------> \n Started \n <-------")
-//        val auth = getAuth()
+
         val msisdn = inputData.getString("msisdn") ?: ""
         val integratedAppVersion = inputData.getString("integratedAppVersion") ?: ""
         val sdkInitiateTimeStamp = inputData.getString("sdkInitiateTimeStamp") ?: ""
@@ -66,11 +59,11 @@ class NetworkDataWorker @AssistedInject constructor(
         return try {
             // 1. Location
 
-            val locationPair = getCurrentLocation()
+            val locationPair = LocationHelper.getCurrentLocation(applicationContext)
             // 2. Network data
             var dataList = getReqData(locationPair, integratedAppVersion).toMutableList()
-            for (data in dataList){
-                data.integratedAppEventName=integratedAppEventName
+            for (data in dataList) {
+                data.integratedAppEventName = integratedAppEventName
                 data.msisdn = msisdn
                 data.sdkInitiateTimeStamp = sdkInitiateTimeStamp
                 data.userLatitude = userLatitude
@@ -80,10 +73,10 @@ class NetworkDataWorker @AssistedInject constructor(
             }
 
             // 3. Send network data
-          var localData=  databaseDao.getNetworkData()
+            var localData = databaseDao.getNetworkData()
 
-            var mergeData: List<NetworkDataEntity> = newDataList  + (localData ?: emptyList())
-            Log.d("mergeData","$mergeData");
+            var mergeData: List<NetworkDataEntity> = newDataList + (localData ?: emptyList())
+            Log.d("mergeData", "$mergeData");
 //            throw Exception()
             val response = apiService.postNetworkData(NetworkDataRequest(authEntity, mergeData))
             Log.d("Data Response", "✅ API success: $response")
@@ -150,37 +143,6 @@ class NetworkDataWorker @AssistedInject constructor(
         }
     }
 
-
-    private suspend fun getCurrentLocation(): Pair<Double, Double> =
-        suspendCancellableCoroutine { cont ->
-            val hasLocationPermission =
-                ActivityCompat.checkSelfPermission(
-                    applicationContext,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED ||
-                        ActivityCompat.checkSelfPermission(
-                            applicationContext,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED
-
-            if (!hasLocationPermission) {
-                cont.resume(Pair(0.00, 0.00)) {}
-                return@suspendCancellableCoroutine
-            }
-
-            locationClient.getCurrentLocation(
-                Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-                CancellationTokenSource().token
-            ).addOnSuccessListener { location ->
-                if (location != null) {
-                    cont.resume(Pair(location.latitude, location.longitude)) {}
-                } else {
-                    cont.resume(Pair(0.0, 0.0)) {}
-                }
-            }.addOnFailureListener {
-                cont.resume(Pair(0.0001, 0.0001)) {}
-            }
-        }
 
     private suspend fun getAuth(): AuthEntity =
         databaseDao.getPersistentAuth() ?: AuthEntity()
@@ -352,18 +314,11 @@ class NetworkDataWorker @AssistedInject constructor(
     }
 
     private suspend fun insertNetworkDataInDb(
-//        integratedAppEventName: String,
         newDataList: List<NetworkDataEntity>
 
     ) {
         try {
-            Log.d("newDataList", "$newDataList", )
-
-//            val reqData = getReqData(getCurrentLocation(), integratedAppEventName)
-//            Log.e("insertNetworkDataInDb", "reqData: $reqData")
-//
-//            // Mark all as offline
-//            reqData.forEach { it.isDataCaptureOffline = true }
+            Log.d("newDataList", "$newDataList")
 
             // Insert once after modification
             if (newDataList.isNotEmpty()) {

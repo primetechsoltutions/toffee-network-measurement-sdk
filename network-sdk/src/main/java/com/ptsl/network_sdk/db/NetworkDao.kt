@@ -6,7 +6,6 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.ptsl.network_sdk.data_model.entity.AuthEntity
 import com.ptsl.network_sdk.data_model.entity.NetworkDataEntity
-import com.ptsl.network_sdk.data_model.entity.WorkEntity
 import com.ptsl.network_sdk.data_model.logger.EventLogModel
 
 
@@ -24,9 +23,6 @@ interface NetworkDao {
     @Query("SELECT * FROM authentity")
     suspend fun getPersistentAuth(): AuthEntity?
 
-    @Query("SELECT * FROM workentity where id =1")
-    suspend fun getPersistentWork(): WorkEntity?
-
     @Query("SELECT * FROM networkdataentity")
     suspend fun getNetworkData(): List<NetworkDataEntity>?
 
@@ -41,6 +37,7 @@ interface NetworkDao {
 
     @Query("DELETE FROM eventlogmodel")
     suspend fun deleteNetworkDataLogEvent()
+
     @Query("SELECT COUNT(*) FROM eventlogmodel")
     suspend fun getNetworkDataLogEventCount(): Long
 }

@@ -8,9 +8,9 @@ import com.ptsl.network_sdk.data_model.BaseResponse
 import com.ptsl.network_sdk.utils.getTotalBytes
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
-import javax.inject.Inject
 
-class DownloadUploadHelper @Inject constructor(private val apiService: ApiService) {
+
+class DownloadUploadHelper (private val apiService: ApiService) {
     suspend fun getBandWidthSpeed(
         networkType: String = "2G",
         retryCountDownload: Int = 1,

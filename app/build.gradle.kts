@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("kotlin-parcelize")
-    id("dagger.hilt.android.plugin")
     kotlin("kapt")
 }
 
@@ -67,8 +66,7 @@ dependencies {
 //    implementation("com.ptsl:net-monitor:1.0.19")
 //    implementation("com.github.primetechsoltutions:mybl-network-measurement-sdk:Test-1.0.2")
 //    implementation("com.github.primetechsoltutions:mybl-network-measurement-sdk:Live-1.0.4")
-    implementation("com.google.dagger:hilt-android:2.57.1")
-    kapt("com.google.dagger:hilt-android-compiler:2.57.1")
+
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
 
