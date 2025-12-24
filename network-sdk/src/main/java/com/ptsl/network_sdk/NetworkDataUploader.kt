@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.ptsl.network_sdk.data_model.UploadStatus
 import com.ptsl.network_sdk.data_model.entity.AuthEntity
 import com.ptsl.network_sdk.network_data_worker.NetworkDataWorker
 import com.ptsl.network_sdk.utils.CheckPermissionHandler
@@ -32,7 +33,7 @@ class NetworkDataUploader {
         integratedAppEventName: String,
         userLatitude: Double = 0.0,
         userLongitude: Double = 0.0,
-        callback: (Boolean) -> Unit
+        callback: (Boolean, UploadStatus) -> Unit
     ) {
         if (this::checkPermissionHandler.isInitialized && checkPermissionHandler.isPermissionGranted()) {
             SdkContainer.coroutineScope.launch {
@@ -48,10 +49,18 @@ class NetworkDataUploader {
                     userLatitude = userLatitude,
                     userLongitude = userLongitude
                 )
-                callback(true)
+                callback(
+                    true, UploadStatus(
+
+                    )
+                )
             }
         } else {
-            callback(false)
+            callback(
+                false, UploadStatus(
+
+                )
+            )
         }
     }
 

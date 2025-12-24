@@ -23,6 +23,7 @@ import com.ptsl.network_sdk.data_model.logger.EventLogModel
 import com.ptsl.network_sdk.data_model.logger.LogDataWrapper
 import com.ptsl.network_sdk.db.NetworkDao
 import com.ptsl.network_sdk.dl_ul_test.DownloadUploadHelper
+import com.ptsl.network_sdk.utils.NetworkEventLogger
 import com.ptsl.network_sdk.utils.prepareDate
 import cz.mroczis.netmonster.core.factory.NetMonsterFactory
 import cz.mroczis.netmonster.core.model.connection.PrimaryConnection
@@ -50,18 +51,18 @@ class NetworkDataWorker(
         val userLongitude = inputData.getDouble("userLongitude", 0.0)
 
 
-        val authEntity = AuthEntity(
-
-            sdkVersion = sdkVersion,
-
-            )
+        val authEntity = AuthEntity(sdkVersion = sdkVersion)
         var newDataList: MutableList<NetworkDataEntity> = mutableListOf()
+
         return try {
             // 1. Location
 
             val locationPair = LocationHelper.getCurrentLocation(applicationContext)
             // 2. Network data
-            var dataList = getReqData(locationPair, integratedAppVersion).toMutableList()
+            var dataList = getReqData(
+                locationPair,
+                integratedAppVersion
+            ).toMutableList()
             for (data in dataList) {
                 data.integratedAppEventName = integratedAppEventName
                 data.msisdn = msisdn
@@ -76,15 +77,23 @@ class NetworkDataWorker(
             var localData = databaseDao.getNetworkData()
 
             var mergeData: List<NetworkDataEntity> = newDataList + (localData ?: emptyList())
-            Log.d("mergeData", "$mergeData");
+//            Log.d("mergeData", "$mergeData");
 //            throw Exception()
-            val response = apiService.postNetworkData(NetworkDataRequest(authEntity, mergeData))
-            Log.d("Data Response", "✅ API success: $response")
+            val response = apiService.postNetworkData(
+                NetworkDataRequest(
+                    authEntity,
+                    mergeData
+                )
+            )
+//            Log.d("Data Response", "✅ API success: $response")
 
             // 4. Send cached logs if available
             if (databaseDao.getNetworkDataLogEventCount() > 0) {
                 apiService.postRetailerNetworkDataLogs(
-                    LogDataWrapper(authEntity, databaseDao.getNetworkDataLogEvent())
+                    LogDataWrapper(
+                        authEntity,
+                        databaseDao.getNetworkDataLogEvent()
+                    )
                 )
                 clearNetworkDataCacheLog()
             }
@@ -109,7 +118,7 @@ class NetworkDataWorker(
                 }
             }
 
-            Log.e("doWork", "❌ Error: ${e.localizedMessage}", e)
+//            Log.e("doWork", "❌ Error: ${e.localizedMessage}", e)
             insertNetworkDataInDb(newDataList)
 //            val auth = getAuth()
 
@@ -120,23 +129,13 @@ class NetworkDataWorker(
             } catch (ex: Exception) {
                 gson.toJson(
                     mapOf(
-                        "error" to "Failed to serialize request",
-                        "message" to ex.message
+                        "error" to "Failed to serialize request", "message" to ex.message
                     )
                 )
             }
 
-            val eventLogModel = EventLogModel(
-                logSource = "MyBL App: $integratedAppEventName",
-                eventType = "Error",
-                title = "Network Request Failed",
-                description = "Failed to post network data",
-                statusCode = statusCode,
-                status = if (statusCode in 400..599) "HTTP Error" else "System Error",
-                message = errorMessage,
-                stackTrace = failedRequest,   // ✅ request body in stack trace
-                os = Build.VERSION.SDK_INT.toString(),
-                deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
+            val eventLogModel = NetworkEventLogger.createNetworkRequestFailedLog(
+                integratedAppEventName, errorMessage, failedRequest, statusCode
             )
             preparedLogEventData(authEntity, eventLogModel)
             Result.failure()
@@ -144,8 +143,7 @@ class NetworkDataWorker(
     }
 
 
-    private suspend fun getAuth(): AuthEntity =
-        databaseDao.getPersistentAuth() ?: AuthEntity()
+    private suspend fun getAuth(): AuthEntity = databaseDao.getPersistentAuth() ?: AuthEntity()
 
     private suspend fun getReqData(
         locationPair: Pair<Double, Double>, integratedAppEventName: String
@@ -159,15 +157,11 @@ class NetworkDataWorker(
             NetMonsterFactory.get(applicationContext).apply {
                 //Getting Cell Info With Self Permission
                 val cells = try {
-                    val hasLocationPermission =
-                        ActivityCompat.checkSelfPermission(
-                            applicationContext,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED ||
-                                ActivityCompat.checkSelfPermission(
-                                    applicationContext,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                ) == PackageManager.PERMISSION_GRANTED
+                    val hasLocationPermission = ActivityCompat.checkSelfPermission(
+                        applicationContext, Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
+                        applicationContext, Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
 
                     if (hasLocationPermission) {
                         getCells()
@@ -182,23 +176,12 @@ class NetworkDataWorker(
 
                 if (cells == null) {
                     val auth = getAuth()
-                    val eventLogModel = EventLogModel(
-                        logSource = "MyBl App: $integratedAppEventName",
-                        eventType = "Error",
-                        title = "Get Network Request Failed",
-                        description = "Failed to get network data due to missing permissions",
-                        statusCode = 901,
-                        status = "False",
-                        message = """
-                    Unable to process network data.
-                    isMobileNetworkConnected: $isMobileNetworkConnected
-                    activeNetworkMnc: $activeNetworkMnc
-                    Error: ${exception?.message ?: "N/A"}
-                """.trimIndent(),
-                        stackTrace = exception?.stackTraceToString()
-                            ?: "No stack trace available",
-                        os = Build.VERSION.SDK_INT.toString(),
-                        deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
+                    ///createPermissionMissingLog
+
+                    val eventLogModel = NetworkEventLogger.createPermissionMissingLog(
+                        integratedAppEventName,
+                        exception?.message ?: "N/A",
+                        exception?.stackTraceToString()
                     )
                     preparedLogEventData(auth, eventLogModel)
                     return dataList
@@ -223,17 +206,10 @@ class NetworkDataWorker(
             dataList
         } catch (e: Exception) {
             val auth = getAuth()
-            val eventLogModel = EventLogModel(
-                logSource = "MyBL App: $integratedAppEventName",
-                eventType = "Error",
-                title = "Get Network Request Failed From Exception",
-                description = "Failed to get network data",
-                statusCode = 902,
-                status = "False",
-                message = "${e.message}",
-                stackTrace = e.stackTraceToString(),
-                os = Build.VERSION.SDK_INT.toString(),
-                deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
+            ///createNetworkDataFetchFailedLog
+            val eventLogModel = NetworkEventLogger.createNetworkDataFetchFailedLog(
+                integratedAppEventName, e.message ?: "N/A",
+                e.stackTraceToString()
             )
             preparedLogEventData(auth, eventLogModel)
             dataList
@@ -242,7 +218,6 @@ class NetworkDataWorker(
 
     private suspend fun isMobileNetworkConnected(context: Context): Boolean {
         return try {
-
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val network = cm.activeNetwork ?: return false
             val caps = cm.getNetworkCapabilities(network) ?: return false
@@ -261,12 +236,14 @@ class NetworkDataWorker(
                 val nDataSubscriptionId = getDefaultDataSubscriptionId(subscriptionManager)
 
                 if (nDataSubscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                    val si = subscriptionManager.getActiveSubscriptionInfo(nDataSubscriptionId)
+                    val si = subscriptionManager.getActiveSubscriptionInfo(
+                        nDataSubscriptionId
+                    )
                     id = si?.mnc?.toString() ?: "-1"
                 }
             }
 
-            Log.e("getActiveNetworkMNC", "Active MNC : $id")
+//            Log.e("getActiveNetworkMNC", "Active MNC : $id")
 
 
         } catch (e: Exception) {
@@ -306,7 +283,12 @@ class NetworkDataWorker(
 
     private suspend fun preparedLogEventData(auth: AuthEntity, eventLogModel: EventLogModel) {
         try {
-            apiService.postRetailerNetworkDataLogs(LogDataWrapper(auth, arrayListOf(eventLogModel)))
+            apiService.postRetailerNetworkDataLogs(
+                LogDataWrapper(
+                    auth,
+                    arrayListOf(eventLogModel)
+                )
+            )
 
         } catch (e: Exception) {
             insertNetworkDataLogInDb(eventLogModel)
@@ -315,10 +297,9 @@ class NetworkDataWorker(
 
     private suspend fun insertNetworkDataInDb(
         newDataList: List<NetworkDataEntity>
-
     ) {
         try {
-            Log.d("newDataList", "$newDataList")
+//            Log.d("newDataList", "$newDataList")
 
             // Insert once after modification
             if (newDataList.isNotEmpty()) {

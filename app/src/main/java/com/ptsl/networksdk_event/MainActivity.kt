@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
                         "10.0.0",
                         currentDate,
                         "Event-22",
-                    ) { success ->
+                    ) { success,status  ->
                         if (success) {
                             Log.i("UploadStatus", "SDK started successfully for Event-2")
                         } else {
@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity() {
                     "10.0.0",
                     currentDate,
                     eventName
-                ) { success ->
+                ) { success,status ->
                     if (success) {
                         Log.i("UploadStatus", "SDK started successfully for $eventName")
                     } else {
