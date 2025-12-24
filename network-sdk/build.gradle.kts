@@ -13,7 +13,7 @@ plugins {
 
 android {
     namespace = "com.ptsl.network_sdk"
-    compileSdk = 36
+    compileSdk = 35
     buildFeatures{
         buildConfig = true
     }
@@ -119,15 +119,15 @@ afterEvaluate {
             create<MavenPublication>("release") {
                 from(components["release"])
                 groupId = "com.github.primetechsoltutions"
-                artifactId = "mybl-network-measurement-sdk"
-                version = "1.0.5"        // 1.0.21
+                artifactId = "toffee-ex-mybl-network-measurement-sdk"
+                version = "1.0.0"
             }
 
             create<MavenPublication>("debug") {
                 from(components["debug"])
                 groupId = "com.github.primetechsoltutions"
-                artifactId = "mybl-network-measurement-sdk-debug"
-                version = "1.0.5"       // 1.0.21
+                artifactId = "toffee-ex-mybl-network-measurement-sdk"
+                version = "1.0.0"
             }
         }
     }

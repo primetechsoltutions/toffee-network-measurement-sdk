@@ -15,7 +15,7 @@ data class AuthEntity(
     @PrimaryKey(autoGenerate = false)
     @SerializedName("msisdn") var msisdn: String = "",
     @SerializedName("apiKey") var apiKey: String = BuildConfig.TOKEN,
-    @SerializedName("userType") var userType: Int = 1001,
+    @SerializedName("userType") var userType: Int = 2001,
     @SerializedName("sdkInitiateTimeStamp") var sdkInitiateTimeStamp: String = "",
     @SerializedName("integratedAppVersion") var integratedAppVersion: String = "",
     @SerializedName("integratedAppEventName") var integratedAppEventName: String = "Event",

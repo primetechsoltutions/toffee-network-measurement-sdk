@@ -13,7 +13,7 @@ import retrofit2.http.Query
 
 interface ApiService {
 
-    @POST("v901/toffeeNetworkMesurment/save-toffee-network-event-sdk-data")
+    @POST("v901/MyBlNetworkMesurment/save-my-bl-network-event-sdk-data")
     suspend fun postNetworkData(@Body request: NetworkDataRequest): BaseResponse<Any>
 
     @POST("v901/MyBlNetworkMesurment/sdk-logs")

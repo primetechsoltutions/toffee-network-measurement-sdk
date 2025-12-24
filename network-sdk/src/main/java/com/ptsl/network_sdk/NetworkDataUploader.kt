@@ -50,7 +50,7 @@ class NetworkDataUploader @Inject constructor(
                     integratedAppEventName = integratedAppEventName,
                     sdkVersion = BuildConfig.SdkVersion,
                     userLatitude = userLatitude,
-                    userLongitude = userLongitude
+                    userLongitude = userLongitude,
                     )
                 databaseDao.insertAuthData(auth)
                 enqueueNetworkDataWork()

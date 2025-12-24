@@ -31,28 +31,28 @@ class MainActivity : AppCompatActivity() {
 
         networkDataUploader.init(this)
 
-        val currentDate = SimpleDateFormat(
-            "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
-        ).format(System.currentTimeMillis())
-        networkDataUploader.requestPermission { success ->
-            if (success){
-                networkDataUploader.startUploading(
-                    "MYBL-101",// You can provide the PNL ID Here.
-                    "10.0.0",
-                    currentDate,
-                    "On Create",
-                ){ success ->
-                    if (success) {
-                        Log.i("UploadStatus", "SDK started successfully for Event-1")
-                    } else {
-                        Log.e("UploadStatus", "SDK failed to start for Event-1")
-                    }
-                }
-            }else{
-                Log.e("Permission", "Required permissions not granted")
-            }
-
-        }
+//        val currentDate = SimpleDateFormat(
+//            "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
+//        ).format(System.currentTimeMillis())
+//        networkDataUploader.requestPermission { success ->
+//            if (success){
+//                networkDataUploader.startUploading(
+//                    "MYBL-101",// You can provide the PNL ID Here.
+//                    "10.0.0",
+//                    currentDate,
+//                    "On Create",
+//                ){ success ->
+//                    if (success) {
+//                        Log.i("UploadStatus", "SDK started successfully for Event-1")
+//                    } else {
+//                        Log.e("UploadStatus", "SDK failed to start for Event-1")
+//                    }
+//                }
+//            }else{
+//                Log.e("Permission", "Required permissions not granted")
+//            }
+//
+//        }
 
         findViewById<Button>(R.id.event_1).setOnClickListener {
             val currentDate = SimpleDateFormat(
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
             networkDataUploader.requestPermission { success ->
                if (success){
                    networkDataUploader.startUploading(
-                       "MYBL-101",// You can provide the PNL ID Here.
+                       "Toffee-2001",// You can provide the PNL ID Here.
                        "10.0.0",
                        currentDate,
                        "Event-1",

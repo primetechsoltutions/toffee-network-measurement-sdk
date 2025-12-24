@@ -7,6 +7,6 @@ import com.ptsl.network_sdk.data_model.entity.NetworkDataEntity
 
 @Keep
 data class NetworkDataRequest (
-    @SerializedName("networktoffeUserModel" ) var auth : AuthEntity,
+    @SerializedName("networkMyBLUserModel" ) var auth : AuthEntity,
     @SerializedName("networkMeasurementRequestModel" ) var data : List<NetworkDataEntity>,
 )
