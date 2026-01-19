@@ -15,11 +15,7 @@ import javax.inject.Inject
 
 
 class MainActivity : AppCompatActivity() {
-
-
     var networkDataUploader = NetworkDataUploader()
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,98 +23,82 @@ class MainActivity : AppCompatActivity() {
 
         NetworkSdk.init(this)
 
-
         networkDataUploader.init(this)
 
         val currentDate = SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
         ).format(System.currentTimeMillis())
 
-        networkDataUploader.requestPermission { success ->
-            if (success) {
-                uploadData("MYBL-10122222", currentDate, "On Create old")
-                uploadData("MYBL-101333333", currentDate, "On Create old-1")
-                uploadData("MYBL-10144444", currentDate, "On Create old-2")
-                uploadData("MYBL-101555555", currentDate, "On Create old-3")
-            } else {
-                Log.e("Permission", "Required permissions not granted")
-            }
-
-        }
+//        networkDataUploader.requestPermission { success ->
+//            if (success) {
+//                uploadData("MYBL-10122222", currentDate, "On Create old")
+//                uploadData("MYBL-101333333", currentDate, "On Create old-1")
+//                uploadData("MYBL-10144444", currentDate, "On Create old-2")
+//                uploadData("MYBL-101555555", currentDate, "On Create old-3")
+//            } else {
+//                Log.e("Permission", "Required permissions not granted")
+//            }
+//
+//        }
 
         findViewById<Button>(R.id.event_1).setOnClickListener {
             val currentDate = SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
             ).format(System.currentTimeMillis())
-            networkDataUploader.requestPermission { success ->
-                if (success) {
-                    uploadData("MYBL-1000111", currentDate, "Button-1")
 
-                } else {
-                    Log.e("Permission", "Required permissions not granted")
-                }
+            uploadData("MYBL-1000111", currentDate, "Button-1")
 
-            }
         }
 
         findViewById<Button>(R.id.event_2).setOnClickListener {
             val currentDate = SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
             ).format(System.currentTimeMillis())
-            networkDataUploader.requestPermission { success ->
-                if (success) {
-                    networkDataUploader.startUploading(
-                        "MYBL-101",// You can provide the PNL ID Here.
-                        "10.0.0",
-                        currentDate,
-                        "Event-22",
-                    ) { success,status  ->
-                        if (success) {
-                            Log.i("UploadStatus", "SDK started successfully for Event-2")
-                        } else {
-                            Log.e("UploadStatus", "SDK failed to start for Event-2")
-                        }
-                    }
-                } else {
-                    Log.e("Permission", "Required permissions not granted")
-                }
+//            networkDataUploader.requestPermission { success ->
+//                if (success) {
+//                    networkDataUploader.startUploading(
+//                        "MYBL-101",
+//                        "10.0.0",
+//                        currentDate,
+//                        "Event-22",
+//                    ) { success, status ->
+//                        if (success) {
+//                            Log.i("UploadStatus", "SDK started successfully for Event-2")
+//                        } else {
+//                            Log.e("UploadStatus", "SDK failed to start for Event-2")
+//                        }
+//                    }
+//                } else {
+//                    Log.e("Permission", "Required permissions not granted")
+//                }
+//
+//            }
+            uploadData("MYBL-1023", currentDate, "Button-2")
 
-            }
         }
-        findViewById<Button>(R.id.event_2).setOnClickListener {
-            val currentDate = SimpleDateFormat(
-                "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
-            ).format(System.currentTimeMillis())
-            networkDataUploader.requestPermission { success ->
-                if (success) {
 
-                } else {
-                    Log.e("Permission", "Required permissions not granted")
-                }
-
-            }
-        }
 
     }
 
 
     private fun uploadData(msisdn: String, currentDate: String, eventName: String) {
-        networkDataUploader.requestPermission { success ->
+//        networkDataUploader.requestPermission { success ->
+//            if (success) {
+//
+//            } else {
+//                Log.e("Permission", "Required permissions not granted")
+//            }
+//        }
+        networkDataUploader.startUploading(
+            msisdn,
+            "10.0.0",
+            currentDate,
+            eventName
+        ) { success, status ->
             if (success) {
-                networkDataUploader.startUploading(
-                    msisdn,
-                    "10.0.0",
-                    currentDate,
-                    eventName
-                ) { success,status ->
-                    if (success) {
-                        Log.i("UploadStatus", "SDK started successfully for $eventName")
-                    } else {
-                        Log.e("UploadStatus", "SDK failed to start for $eventName")
-                    }
-                }
+                Log.i("UploadStatus", "SDK started successfully for $eventName")
             } else {
-                Log.e("Permission", "Required permissions not granted")
+                Log.e("UploadStatus", "SDK failed to start for $eventName")
             }
         }
     }

@@ -35,30 +35,69 @@ class NetworkDataUploader {
         userLongitude: Double = 0.0,
         callback: (Boolean, UploadStatus) -> Unit
     ) {
-        if (this::checkPermissionHandler.isInitialized && checkPermissionHandler.isPermissionGranted()) {
-            SdkContainer.coroutineScope.launch {
-                val auth = AuthEntity(
-                    sdkVersion = BuildConfig.SdkVersion,
-                )
-                enqueueNetworkDataWork(
-                    auth,
-                    msisdn = msisdn,
-                    integratedAppVersion = integratedAppVersion,
-                    sdkInitiateTimeStamp = sdkInitiateTimeStamp,
-                    integratedAppEventName = integratedAppEventName,
-                    userLatitude = userLatitude,
-                    userLongitude = userLongitude
-                )
-                callback(
-                    true, UploadStatus(
+        if (this::checkPermissionHandler.isInitialized /*&& checkPermissionHandler.isPermissionGranted()*/) {
 
-                    )
-                )
+            requestPermission { isGranted ->
+                if (isGranted) {
+                    SdkContainer.coroutineScope.launch {
+                        val auth = AuthEntity(
+                            sdkVersion = BuildConfig.SdkVersion,
+                        )
+                        enqueueNetworkDataWork(
+                            auth,
+                            msisdn = msisdn,
+                            integratedAppVersion = integratedAppVersion,
+                            sdkInitiateTimeStamp = sdkInitiateTimeStamp,
+                            integratedAppEventName = integratedAppEventName,
+                            userLatitude = userLatitude,
+                            userLongitude = userLongitude
+                        )
+                        callback(
+                            true, UploadStatus(
+                                isSdkInit = true,
+                                isLocationEnabled = true,
+                                isPhoneStateGranted = true,
+                                dataSaved = true,
+                                message = "SDK Initialized Successfully"
+                            )
+                        )
+                    }
+                } else {
+                    SdkContainer.coroutineScope.launch {
+                        val auth = AuthEntity(
+                            sdkVersion = BuildConfig.SdkVersion,
+                        )
+                        enqueueNetworkDataWork(
+                            auth,
+                            msisdn = msisdn,
+                            integratedAppVersion = integratedAppVersion,
+                            sdkInitiateTimeStamp = sdkInitiateTimeStamp,
+                            integratedAppEventName = integratedAppEventName,
+                            userLatitude = userLatitude,
+                            userLongitude = userLongitude
+                        )
+                        callback(
+                            true, UploadStatus(
+                                isSdkInit = true,
+                                isLocationEnabled = false,
+                                isPhoneStateGranted = false,
+                                dataSaved = true,
+                                message = "SDK Initialized Successfully"
+                            )
+                        )
+                    }
+                }
+
             }
+
         } else {
             callback(
                 false, UploadStatus(
-
+                    isSdkInit = false,
+                    isLocationEnabled = false,
+                    isPhoneStateGranted = false,
+                    dataSaved = false,
+                    message = "SDK Initialized failed"
                 )
             )
         }
