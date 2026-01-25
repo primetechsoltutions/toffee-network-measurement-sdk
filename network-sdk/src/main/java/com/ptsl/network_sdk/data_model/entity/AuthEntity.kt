@@ -13,8 +13,7 @@ import kotlinx.parcelize.Parcelize
 @Entity()
 @Keep
 data class AuthEntity(
-    @PrimaryKey(autoGenerate = true) var id: Int = 0,
-
+    @PrimaryKey(autoGenerate = false)
     @SerializedName("apiKey") var apiKey: String = BuildConfig.TOKEN,
     @SerializedName("userType") var userType: Int = 1001,
     @SerializedName("sdkVersion") var sdkVersion: String = "",

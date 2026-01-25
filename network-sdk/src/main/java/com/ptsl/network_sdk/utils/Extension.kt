@@ -96,7 +96,9 @@ suspend fun ICell.prepareDate(
     downloader: DownloadUploadHelper,
     hasMobileInternet: Boolean=false,
     activeNetworkMnc : String = "-1",
-    usedSimSlot: Int = 0
+    usedSimSlot: Int = 0,
+    rtt:Double=0.0,
+    latency:Double=0.0
 ): NetworkDataEntity {
     val mcc = this.network?.mcc
     val mnc = this.network?.mnc
@@ -124,8 +126,8 @@ suspend fun ICell.prepareDate(
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
-                it.rtt = 0.0
-                it.latency =0.0
+                it.rtt = rtt
+                it.latency =latency
             }
         }
 
@@ -157,9 +159,8 @@ suspend fun ICell.prepareDate(
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
-                it.rtt = 0.0
-                it.latency =0.0
-            }
+                it.rtt = rtt
+                it.latency =latency }
         }
 
         is CellWcdma -> {
@@ -189,8 +190,8 @@ suspend fun ICell.prepareDate(
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
-                it.rtt = 0.0
-                it.latency =0.0
+                it.rtt = rtt
+                it.latency =latency
             }
         }
 
@@ -226,8 +227,8 @@ suspend fun ICell.prepareDate(
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
-                it.rtt = 0.0
-                it.latency =0.0
+                it.rtt = rtt
+                it.latency =latency
             }
         }
 
@@ -256,8 +257,8 @@ suspend fun ICell.prepareDate(
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
-                it.rtt = 0.0
-                it.latency =0.0
+                it.rtt = rtt
+                it.latency =latency
             }
         }
 
@@ -284,8 +285,8 @@ suspend fun ICell.prepareDate(
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
-                it.rtt = 0.0
-                it.latency =0.0
+                it.rtt = rtt
+                it.latency =latency
             }
         }
 
@@ -344,5 +345,7 @@ private fun CellGsm.calculateRXQUAL(ber: Int): Int {
         else -> 0
     }
 }
+
+
 
 

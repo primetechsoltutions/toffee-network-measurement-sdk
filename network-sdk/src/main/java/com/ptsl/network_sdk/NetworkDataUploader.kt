@@ -2,6 +2,7 @@ package com.ptsl.network_sdk
 
 
 import android.content.Context
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.work.Constraints
 import androidx.work.NetworkType
@@ -42,7 +43,11 @@ class NetworkDataUploader {
                     SdkContainer.coroutineScope.launch {
                         val auth = AuthEntity(
                             sdkVersion = BuildConfig.SdkVersion,
+                            isSdkInitialized = this@NetworkDataUploader::checkPermissionHandler.isInitialized,
+                            isLocationEnabled = checkPermissionHandler.isLocationPermissionGranted(),
+                            isPhoneStateEnabled = checkPermissionHandler.isLocationPermissionGranted()
                         )
+                        SdkContainer.dao.insertAuthData(auth)
                         enqueueNetworkDataWork(
                             auth,
                             msisdn = msisdn,
@@ -50,7 +55,8 @@ class NetworkDataUploader {
                             sdkInitiateTimeStamp = sdkInitiateTimeStamp,
                             integratedAppEventName = integratedAppEventName,
                             userLatitude = userLatitude,
-                            userLongitude = userLongitude
+                            userLongitude = userLongitude,
+
                         )
                         callback(
                             true, UploadStatus(
@@ -62,11 +68,25 @@ class NetworkDataUploader {
                             )
                         )
                     }
-                } else {
+                }
+                else {
                     SdkContainer.coroutineScope.launch {
                         val auth = AuthEntity(
                             sdkVersion = BuildConfig.SdkVersion,
+                            isSdkInitialized = this@NetworkDataUploader::checkPermissionHandler.isInitialized,
+                            isLocationEnabled = checkPermissionHandler.isLocationPermissionGranted(),
+                            isPhoneStateEnabled = checkPermissionHandler.isLocationPermissionGranted()
                         )
+                        SdkContainer.dao.insertAuthData(auth)
+                        Log.d(
+                            "isSdkInitialized",
+                            this@NetworkDataUploader::checkPermissionHandler.isInitialized.toString()
+                        )
+                        Log.d(
+                            "isLocationEnabled",
+                            checkPermissionHandler.isLocationPermissionGranted().toString()
+                        )
+                        Log.d("isPhoneStateEnabled", checkPermissionHandler.isLocationPermissionGranted().toString())
                         enqueueNetworkDataWork(
                             auth,
                             msisdn = msisdn,
@@ -122,7 +142,7 @@ class NetworkDataUploader {
         sdkInitiateTimeStamp: String,
         integratedAppEventName: String,
         userLatitude: Double = 0.0,
-        userLongitude: Double = 0.0
+        userLongitude: Double = 0.0,
     ) {
 
         val inputData = workDataOf(

@@ -24,12 +24,15 @@ import com.ptsl.network_sdk.data_model.logger.LogDataWrapper
 import com.ptsl.network_sdk.db.NetworkDao
 import com.ptsl.network_sdk.dl_ul_test.DownloadUploadHelper
 import com.ptsl.network_sdk.utils.NetworkEventLogger
+import com.ptsl.network_sdk.utils.calculateRttAndLatency
 import com.ptsl.network_sdk.utils.prepareDate
 import cz.mroczis.netmonster.core.factory.NetMonsterFactory
 import cz.mroczis.netmonster.core.model.connection.PrimaryConnection
 import kotlinx.coroutines.suspendCancellableCoroutine
 import retrofit2.HttpException
 import java.io.IOException
+import java.util.Locale
+import kotlin.text.toDouble
 
 class NetworkDataWorker(
     appContext: Context,
@@ -46,20 +49,19 @@ class NetworkDataWorker(
         val integratedAppVersion = inputData.getString("integratedAppVersion") ?: ""
         val sdkInitiateTimeStamp = inputData.getString("sdkInitiateTimeStamp") ?: ""
         val integratedAppEventName = inputData.getString("integratedAppEventName") ?: ""
-        val sdkVersion = inputData.getString("sdkVersion") ?: ""
         val userLatitude = inputData.getDouble("userLatitude", 0.0)
         val userLongitude = inputData.getDouble("userLongitude", 0.0)
 
 
-        val authEntity = AuthEntity(sdkVersion = sdkVersion)
-        var newDataList: MutableList<NetworkDataEntity> = mutableListOf()
+        val authEntity = getAuth()
+        val newDataList: MutableList<NetworkDataEntity> = mutableListOf()
 
         return try {
             // 1. Location
 
             val locationPair = LocationHelper.getCurrentLocation(applicationContext)
             // 2. Network data
-            var dataList = getReqData(
+            val dataList = getReqData(
                 locationPair,
                 integratedAppVersion
             ).toMutableList()
@@ -72,12 +74,13 @@ class NetworkDataWorker(
 
                 newDataList.add(data)
             }
+            Log.d("mergeData", "$dataList");
 
             // 3. Send network data
-            var localData = databaseDao.getNetworkData()
+            val localData = databaseDao.getNetworkData()
 
-            var mergeData: List<NetworkDataEntity> = newDataList + (localData ?: emptyList())
-//            Log.d("mergeData", "$mergeData");
+            val mergeData: List<NetworkDataEntity> = newDataList + (localData ?: emptyList())
+            Log.d("mergeData", "$mergeData");
 //            throw Exception()
             val response = apiService.postNetworkData(
                 NetworkDataRequest(
@@ -85,18 +88,8 @@ class NetworkDataWorker(
                     mergeData
                 )
             )
-//            Log.d("Data Response", "✅ API success: $response")
+            Log.d("Data Response", "✅ API success: $response")
 
-            // 4. Send cached logs if available
-            if (databaseDao.getNetworkDataLogEventCount() > 0) {
-                apiService.postRetailerNetworkDataLogs(
-                    LogDataWrapper(
-                        authEntity,
-                        databaseDao.getNetworkDataLogEvent()
-                    )
-                )
-                clearNetworkDataCacheLog()
-            }
             clearNetworkDataCache()
             Result.success()
 
@@ -145,76 +138,194 @@ class NetworkDataWorker(
 
     private suspend fun getAuth(): AuthEntity = databaseDao.getPersistentAuth() ?: AuthEntity()
 
+    /// this is the runing function///
+
+
+//    private suspend fun getReqData(
+//        locationPair: Pair<Double, Double>, integratedAppEventName: String
+//    ): ArrayList<NetworkDataEntity> {
+//        val dataList = arrayListOf<NetworkDataEntity>()
+//        return try {
+//            val isMobileNetworkConnected = isMobileNetworkConnected(applicationContext)
+//            val activeNetworkMnc = if (isMobileNetworkConnected) getActiveNetworkMNC() else "-1"
+//            var exception: Exception? = null
+//            //Getting Cell Info
+//            NetMonsterFactory.get(applicationContext).apply {
+//                //Getting Cell Info With Self Permission
+//                val cells = try {
+//                    val hasLocationPermission = ActivityCompat.checkSelfPermission(
+//                        applicationContext, Manifest.permission.ACCESS_FINE_LOCATION
+//                    ) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
+//                        applicationContext, Manifest.permission.ACCESS_COARSE_LOCATION
+//                    ) == PackageManager.PERMISSION_GRANTED
+//
+//                    if (hasLocationPermission) {
+//                        getCells()
+//                    } else {
+//                        exception = SecurityException("Missing location permission")
+//                        null
+//                    }
+//                } catch (e: Exception) {
+//                    exception = e
+//                    null
+//                }
+//
+//                if (cells == null) {
+//                    val auth = getAuth()
+//                    ///createPermissionMissingLog
+//
+//                    val eventLogModel = NetworkEventLogger.createPermissionMissingLog(
+//                        integratedAppEventName,
+//                        exception?.message ?: "N/A",
+//                        exception?.stackTraceToString()
+//                    )
+//                    preparedLogEventData(auth, eventLogModel)
+//                    return dataList
+//                }
+//                val metrics = calculateRttAndLatency()
+//                Log.d(
+//                    "NetworkMetrics",
+//                    "RTT: ${"%.2f".format(metrics.rtt)} ms | Latency: ${"%.2f".format(metrics.latency)} ms"
+//                )
+//                cells.find {
+//                    it.network?.mcc == "470"
+//                }?.let {
+//                    cells.forEach { cell ->
+//                        if (cell.connectionStatus is PrimaryConnection) {
+//                            val data = cell.prepareDate(
+//                                locationPair,
+//                                downloader,
+//                                isMobileNetworkConnected,
+//                                activeNetworkMnc,
+//                                getSimCount(),
+//                                rtt = String.format(Locale.US, "%.2f", metrics.rtt.toDouble()).toDouble(),
+//                                latency = String.format(Locale.US, "%.2f", metrics.latency.toDouble()).toDouble()
+//                            )
+//                            dataList.add(data)
+//                        }
+//                    }
+//                }
+//            }
+//            dataList
+//        } catch (e: Exception) {
+//            val auth = getAuth()
+//            ///createNetworkDataFetchFailedLog
+//            val eventLogModel = NetworkEventLogger.createNetworkDataFetchFailedLog(
+//                integratedAppEventName, e.message ?: "N/A",
+//                e.stackTraceToString()
+//            )
+//            preparedLogEventData(auth, eventLogModel)
+//            dataList
+//        }
+//    }
+
+
     private suspend fun getReqData(
-        locationPair: Pair<Double, Double>, integratedAppEventName: String
+        locationPair: Pair<Double, Double>,
+        integratedAppEventName: String
     ): ArrayList<NetworkDataEntity> {
+
         val dataList = arrayListOf<NetworkDataEntity>()
+
         return try {
+
             val isMobileNetworkConnected = isMobileNetworkConnected(applicationContext)
             val activeNetworkMnc = if (isMobileNetworkConnected) getActiveNetworkMNC() else "-1"
-            var exception: Exception? = null
-            //Getting Cell Info
-            NetMonsterFactory.get(applicationContext).apply {
-                //Getting Cell Info With Self Permission
-                val cells = try {
-                    val hasLocationPermission = ActivityCompat.checkSelfPermission(
-                        applicationContext, Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
-                        applicationContext, Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
+            val metrics = calculateRttAndLatency(
+                hasMobileInternet = isMobileNetworkConnected
+            )
 
-                    if (hasLocationPermission) {
-                        getCells()
-                    } else {
-                        exception = SecurityException("Missing location permission")
-                        null
-                    }
-                } catch (e: Exception) {
-                    exception = e
+            var permissionException: Exception? = null
+
+            val cells = try {
+                val hasPermission =
+                    ActivityCompat.checkSelfPermission(
+                        applicationContext,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED ||
+                            ActivityCompat.checkSelfPermission(
+                                applicationContext,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED
+
+                if (hasPermission) {
+                    NetMonsterFactory.get(applicationContext).getCells()
+                } else {
+                    permissionException = SecurityException("Missing location permission")
                     null
                 }
 
-                if (cells == null) {
-                    val auth = getAuth()
-                    ///createPermissionMissingLog
+            } catch (e: Exception) {
+                permissionException = e
+                null
+            }
 
-                    val eventLogModel = NetworkEventLogger.createPermissionMissingLog(
+
+            // 🔹 CASE 1: Permission NOT granted → fallback data
+            if (cells.isNullOrEmpty()) {
+
+                val auth = getAuth()
+
+                preparedLogEventData(
+                    auth,
+                    NetworkEventLogger.createPermissionMissingLog(
                         integratedAppEventName,
-                        exception?.message ?: "N/A",
-                        exception?.stackTraceToString()
+                        permissionException?.message ?: "N/A",
+                        permissionException?.stackTraceToString()
                     )
-                    preparedLogEventData(auth, eventLogModel)
-                    return dataList
-                }
-                cells.find {
-                    it.network?.mcc == "470"
-                }?.let {
-                    cells.forEach { cell ->
-                        if (cell.connectionStatus is PrimaryConnection) {
-                            val data = cell.prepareDate(
-                                locationPair,
-                                downloader,
-                                isMobileNetworkConnected,
-                                activeNetworkMnc,
-                                getSimCount()
-                            )
-                            dataList.add(data)
-                        }
-                    }
+                )
+
+                // ✅ Create minimal entity WITHOUT cell info
+                val speedPair = downloader.getBandWidthSpeed(networkType = "2G",hasMobileInternet= isMobileNetworkConnected,activeNetworkMnc = activeNetworkMnc, currentMnc = activeNetworkMnc)
+                dataList.add(
+                    NetworkDataEntity(
+                        lattitude = 0.0,
+                        longitude = 0.0,
+                        data = if (isMobileNetworkConnected) "Mobile" else "Wifi",
+                        usedSimSlot = getSimCount(),
+                        dlspeed = speedPair.first,
+                        ulspeed = speedPair.second,
+                        rtt = String.format(Locale.US, "%.2f", metrics.rtt.toDouble()).toDouble(),
+                        latency = String.format(Locale.US, "%.2f", metrics.latency.toDouble()).toDouble()
+                    )
+                )
+
+                return dataList
+            }
+
+            // 🔹 CASE 2: Permission granted → full cell-based data
+            cells.forEach { cell ->
+                if (cell.connectionStatus is PrimaryConnection) {
+                    dataList.add(
+                        cell.prepareDate(
+                            locationPair,
+                            downloader,
+                            isMobileNetworkConnected,
+                            activeNetworkMnc,
+                            getSimCount(),
+                            rtt = String.format(Locale.US, "%.2f", metrics.rtt.toDouble()).toDouble(),
+                            latency = String.format(Locale.US, "%.2f", metrics.latency.toDouble()).toDouble()
+                        )
+                    )
                 }
             }
+
             dataList
+
         } catch (e: Exception) {
-            val auth = getAuth()
-            ///createNetworkDataFetchFailedLog
-            val eventLogModel = NetworkEventLogger.createNetworkDataFetchFailedLog(
-                integratedAppEventName, e.message ?: "N/A",
-                e.stackTraceToString()
+            preparedLogEventData(
+                getAuth(),
+                NetworkEventLogger.createNetworkDataFetchFailedLog(
+                    integratedAppEventName,
+                    e.message ?: "N/A",
+                    e.stackTraceToString()
+                )
             )
-            preparedLogEventData(auth, eventLogModel)
+
             dataList
         }
     }
+
 
     private suspend fun isMobileNetworkConnected(context: Context): Boolean {
         return try {
@@ -280,20 +391,65 @@ class NetworkDataWorker(
         return SubscriptionManager.INVALID_SUBSCRIPTION_ID
     }
 
-
-    private suspend fun preparedLogEventData(auth: AuthEntity, eventLogModel: EventLogModel) {
+    private suspend fun preparedLogEventData(
+        auth: AuthEntity,
+        eventLogModel: EventLogModel
+    ) {
         try {
+            val logsToSend = mutableListOf<EventLogModel>()
+
+            // Add cached logs if available
+            val cachedCount = databaseDao.getNetworkDataLogEventCount()
+            if (cachedCount > 0) {
+                logsToSend.addAll(databaseDao.getNetworkDataLogEvent())
+            }
+
+            // Add current log
+            logsToSend.add(eventLogModel)
+
+            // Send merged logs in a single request
             apiService.postRetailerNetworkDataLogs(
                 LogDataWrapper(
                     auth,
-                    arrayListOf(eventLogModel)
+                    ArrayList(logsToSend)
                 )
             )
 
+            // Clear cache only after successful send
+            if (cachedCount > 0) {
+                clearNetworkDataCacheLog()
+            }
+
         } catch (e: Exception) {
+            // Cache current log if sending fails
             insertNetworkDataLogInDb(eventLogModel)
         }
     }
+
+
+//    private suspend fun preparedLogEventData(auth: AuthEntity, eventLogModel: EventLogModel) {
+//        try {
+//            // 4. Send cached logs if available
+//            if (databaseDao.getNetworkDataLogEventCount() > 0) {
+//                apiService.postRetailerNetworkDataLogs(
+//                    LogDataWrapper(
+//                        getAuth(),
+//                        databaseDao.getNetworkDataLogEvent()
+//                    )
+//                )
+//                clearNetworkDataCacheLog()
+//            }
+//            apiService.postRetailerNetworkDataLogs(
+//                LogDataWrapper(
+//                    auth,
+//                    arrayListOf(eventLogModel)
+//                )
+//            )
+//
+//        } catch (e: Exception) {
+//            insertNetworkDataLogInDb(eventLogModel)
+//        }
+//    }
 
     private suspend fun insertNetworkDataInDb(
         newDataList: List<NetworkDataEntity>
