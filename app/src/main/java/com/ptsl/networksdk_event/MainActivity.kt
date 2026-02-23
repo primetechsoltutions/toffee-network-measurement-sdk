@@ -96,9 +96,9 @@ class MainActivity : AppCompatActivity() {
             eventName
         ) { success, status ->
             if (success) {
-                Log.i("UploadStatus", "SDK started successfully for $eventName")
+                Log.i("UploadStatus", "SDK started successfully for $eventName Response: ${status.message}")
             } else {
-                Log.e("UploadStatus", "SDK failed to start for $eventName")
+                Log.e("UploadStatus", "SDK failed to start for $eventName Response: ${status.message}")
             }
         }
     }
