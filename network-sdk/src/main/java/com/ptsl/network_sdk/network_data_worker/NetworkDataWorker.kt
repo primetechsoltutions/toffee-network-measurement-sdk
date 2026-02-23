@@ -11,9 +11,6 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.gson.Gson
 import com.ptsl.network_sdk.api.ApiService
 import com.ptsl.network_sdk.data_model.NetworkDataRequest
@@ -23,15 +20,18 @@ import com.ptsl.network_sdk.data_model.logger.EventLogModel
 import com.ptsl.network_sdk.data_model.logger.LogDataWrapper
 import com.ptsl.network_sdk.db.NetworkDao
 import com.ptsl.network_sdk.dl_ul_test.DownloadUploadHelper
+import com.ptsl.network_sdk.utils.CommonUtils
 import com.ptsl.network_sdk.utils.NetworkEventLogger
 import com.ptsl.network_sdk.utils.calculateRttAndLatency
 import com.ptsl.network_sdk.utils.prepareDate
+import cz.mroczis.netmonster.core.Milliseconds
 import cz.mroczis.netmonster.core.factory.NetMonsterFactory
 import cz.mroczis.netmonster.core.model.connection.PrimaryConnection
-import kotlinx.coroutines.suspendCancellableCoroutine
 import retrofit2.HttpException
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.math.roundToInt
 import kotlin.text.toDouble
 
 class NetworkDataWorker(
@@ -63,7 +63,7 @@ class NetworkDataWorker(
             // 2. Network data
             val dataList = getReqData(
                 locationPair,
-                integratedAppVersion
+                integratedAppEventName
             ).toMutableList()
             for (data in dataList) {
                 data.integratedAppEventName = integratedAppEventName
@@ -74,13 +74,13 @@ class NetworkDataWorker(
 
                 newDataList.add(data)
             }
-            Log.d("mergeData", "$dataList");
+//            Log.d("mergeData", "$dataList");
 
             // 3. Send network data
             val localData = databaseDao.getNetworkData()
 
             val mergeData: List<NetworkDataEntity> = newDataList + (localData ?: emptyList())
-            Log.d("mergeData", "$mergeData");
+//            Log.d("mergeData", "$mergeData");
 //            throw Exception()
             val response = apiService.postNetworkData(
                 NetworkDataRequest(
@@ -222,18 +222,29 @@ class NetworkDataWorker(
 
     private suspend fun getReqData(
         locationPair: Pair<Double, Double>,
-        integratedAppEventName: String
+        integratedAppEventName: String,
     ): ArrayList<NetworkDataEntity> {
 
         val dataList = arrayListOf<NetworkDataEntity>()
 
         return try {
-
+            val testUrl="https://crsrcgz.banglalink.net"
+//            val testUrl="https://salesforceapptest.banglalink.net/"
+//            val testUrl = "https://speed.cloudflare.com/"
+//            val testUrl = "https://sgp-ping.vultr.com" //ASIA TEST URL
+            //val testUrl = "https://ewr-ping.vultr.com" // USA TEST URL
+            //val testUrl = "https://fra-ping.vultr.com", //Europe TEST URL
+//             val testUrl="https://blsalesforceapp.banglalink.net/" //SFA Base URL Live
+//             val testUrl="https://blsalesforceappsdk.banglalink.net/" //SDK Base URL Live
             val isMobileNetworkConnected = isMobileNetworkConnected(applicationContext)
             val activeNetworkMnc = if (isMobileNetworkConnected) getActiveNetworkMNC() else "-1"
             val metrics = calculateRttAndLatency(
-                hasMobileInternet = isMobileNetworkConnected
+                hasMobileInternet = true,
+                testUrl = testUrl
             )
+
+
+            Log.d("NetworkMetrics", " URL: $testUrl->  RTT: ${"%.2f".format(metrics.rtt)} ms | Latency: ${"%.2f".format(metrics.latency)} ms")
 
             var permissionException: Exception? = null
 
@@ -276,18 +287,25 @@ class NetworkDataWorker(
                 )
 
                 // ✅ Create minimal entity WITHOUT cell info
-                val speedPair = downloader.getBandWidthSpeed(networkType = "2G",hasMobileInternet= isMobileNetworkConnected,activeNetworkMnc = activeNetworkMnc, currentMnc = activeNetworkMnc)
+                val speedPair = downloader.getBandWidthSpeed(networkType = "2G",hasMobileInternet= isMobileNetworkConnected, currentMnc = activeNetworkMnc, activeNetworkMnc = activeNetworkMnc)
                 dataList.add(
                     NetworkDataEntity(
                         lattitude = 0.0,
                         longitude = 0.0,
                         data = if (isMobileNetworkConnected) "Mobile" else "Wifi",
                         usedSimSlot = getSimCount(),
-                        dlspeed = speedPair.first,
-                        ulspeed = speedPair.second,
-                        rtt = String.format(Locale.US, "%.2f", metrics.rtt.toDouble()).toDouble(),
-                        latency = String.format(Locale.US, "%.2f", metrics.latency.toDouble()).toDouble()
-                    )
+                        dlspeed = speedPair.downloadSpeedKbps,
+                        ulspeed = speedPair.uploadSpeedKbps,
+                        rtt = CommonUtils.round2(metrics.rtt),
+                        latency = CommonUtils.round2(metrics.latency),
+                        totalDownloadVolume = speedPair.totalDownloadMB,
+                        totalUploadVolume = speedPair.totalUploadMB,
+                        time = CommonUtils.getCurrentDateTime(),
+                        date = CommonUtils.getCurrentDate(),
+                        deviceModel = "${Build.MODEL}",
+                        deviceManufacture ="${Build.MANUFACTURER}",
+                        deviceOsVersion ="${Build.VERSION.SDK_INT}"
+                        )
                 )
 
                 return dataList
@@ -300,11 +318,12 @@ class NetworkDataWorker(
                         cell.prepareDate(
                             locationPair,
                             downloader,
-                            isMobileNetworkConnected,
+                            true,
                             activeNetworkMnc,
                             getSimCount(),
-                            rtt = String.format(Locale.US, "%.2f", metrics.rtt.toDouble()).toDouble(),
-                            latency = String.format(Locale.US, "%.2f", metrics.latency.toDouble()).toDouble()
+                            rtt = CommonUtils.round2(metrics.rtt),
+                            latency = CommonUtils.round2(metrics.latency),
+                            applicationContext
                         )
                     )
                 }
@@ -338,7 +357,7 @@ class NetworkDataWorker(
         }
     }
 
-    private suspend fun getActiveNetworkMNC(): String {
+    private fun getActiveNetworkMNC(): String {
         var id = "-1"
         try {
 
@@ -492,4 +511,5 @@ class NetworkDataWorker(
             0
         }
     }
+
 }

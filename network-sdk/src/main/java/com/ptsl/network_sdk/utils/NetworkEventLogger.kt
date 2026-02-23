@@ -13,7 +13,7 @@ object NetworkEventLogger {
         statusCode: Int = 0
     ): EventLogModel {
         return EventLogModel(
-            logSource = "MyBL App: $eventName",
+            logSource = "Toffee App: $eventName",
             eventType = "Error",
             title = "Network Request Failed",
             description = "Failed to post network data",
@@ -33,7 +33,7 @@ object NetworkEventLogger {
         statusCode: Int = 902
     ): EventLogModel {
         return EventLogModel(
-            logSource = "MyBL App: $eventName",
+            logSource = "Toffee App: $eventName",
             eventType = "Error",
             title = "Get Network Request Failed From Exception",
             description = "Failed to get network data",
@@ -53,7 +53,7 @@ object NetworkEventLogger {
         statusCode: Int = 901
     ): EventLogModel {
         return EventLogModel(
-            logSource = "MyBL App: $eventName",
+            logSource = "Toffee App: $eventName",
             eventType = "Error",
             title = "Get Network Request Failed",
             description = "Failed to get network data due to missing permissions",

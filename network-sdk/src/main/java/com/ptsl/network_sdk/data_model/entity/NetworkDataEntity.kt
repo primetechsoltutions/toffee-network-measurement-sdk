@@ -67,5 +67,7 @@ data class NetworkDataEntity(
     @SerializedName("deviceOsVersion") var deviceOsVersion: String? = null,
     @SerializedName("usedSimSlot") var usedSimSlot: Int? = null,
     @SerializedName("rtt") var rtt: Double? = null,
-    @SerializedName("latency") var latency: Double? = null
+    @SerializedName("latency") var latency: Double? = null,
+    @SerializedName("totalDownloadVolume") var totalDownloadVolume: Double? = null,
+    @SerializedName("totalUploadVolume") var totalUploadVolume: Double? = null
 ) : Parcelable

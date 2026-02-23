@@ -9,6 +9,6 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 @Keep
 data class LogDataWrapper(
-    @SerializedName("networkMyBLUserModel") val auth: AuthEntity,
+    @SerializedName("networkToffieUserModel") val auth: AuthEntity,
     @SerializedName("eventlog") val eventLog: List<EventLogModel>
 ) : Parcelable

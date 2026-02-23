@@ -16,7 +16,7 @@ interface ApiService {
     @POST("v902/toffeeNetworkMesurment/save-toffee-network-event-sdk-data")
     suspend fun postNetworkData(@Body request: NetworkDataRequest): BaseResponse<Any>
 
-    @POST("v902/MyBlNetworkMesurment/sdk-logs")
+    @POST("toffee-sdk/sdk-logs")
     suspend fun postRetailerNetworkDataLogs(@Body request: LogDataWrapper): BaseResponse<Any>
 
     @GET("NetworkMesurment/GetBandwithFile")

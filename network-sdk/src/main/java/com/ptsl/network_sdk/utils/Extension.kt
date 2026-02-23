@@ -4,7 +4,6 @@ import android.os.Build
 import android.util.Log
 import com.ptsl.network_sdk.data_model.entity.NetworkDataEntity
 import com.ptsl.network_sdk.dl_ul_test.DownloadUploadHelper
-import cz.mroczis.netmonster.core.Milliseconds
 import cz.mroczis.netmonster.core.model.cell.CellCdma
 import cz.mroczis.netmonster.core.model.cell.CellGsm
 import cz.mroczis.netmonster.core.model.cell.CellLte
@@ -19,6 +18,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
+import android.content.Context
+import android.telephony.TelephonyManager
 
 fun Calendar.parseTime(time: String): Pair<Int, Int> {
     return try {
@@ -98,17 +100,18 @@ suspend fun ICell.prepareDate(
     activeNetworkMnc : String = "-1",
     usedSimSlot: Int = 0,
     rtt:Double=0.0,
-    latency:Double=0.0
+    latency:Double=0.0,
+    context: Context
 ): NetworkDataEntity {
     val mcc = this.network?.mcc
     val mnc = this.network?.mnc
     Log.e("MNC", "MNC : ${mnc}")
     return when (this) {
         is CellCdma -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "2G",hasMobileInternet= hasMobileInternet,activeNetworkMnc = activeNetworkMnc, currentMnc = mnc)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "2G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc)
             return NetworkDataEntity().also {
-                it.time = getCurrentTime(System.currentTimeMillis())
-                it.date = getCurrentDate(System.currentTimeMillis())
+                it.time = CommonUtils.getCurrentDateTime()
+                it.date = CommonUtils.getCurrentDate()
                 it.mcc = "${removeNullFromString("${mcc}")}"
                 it.mnc = "${removeNullFromString("${mnc}")}"
                 it.type = "CDMA"
@@ -117,25 +120,27 @@ suspend fun ICell.prepareDate(
                 it.rssi = removeNullFromString("${this.signal.cdmaRssi}")
                 it.lattitude = locationPair.first
                 it.longitude = locationPair.second
-                it.dlspeed = speedPair.first
-                it.ulspeed = speedPair.second
+                it.dlspeed = speedPair.downloadSpeedKbps
+                it.ulspeed = speedPair.uploadSpeedKbps
                 it.deviceModel = "${Build.MODEL}"
                 it.data = if (hasMobileInternet) "Mobile" else "Wifi"
                 it.isDataCaptureOffline = false
-                it.isUserDeviceOnCall = false
+                it.isUserDeviceOnCall = isUserOnCall(context = context)
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
                 it.rtt = rtt
                 it.latency =latency
+                it.totalUploadVolume=speedPair.totalUploadMB
+                it.totalDownloadVolume=speedPair.totalDownloadMB
             }
         }
 
         is CellGsm -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "2G",hasMobileInternet= hasMobileInternet,activeNetworkMnc = activeNetworkMnc, currentMnc = mnc)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "2G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc)
             return NetworkDataEntity().also {
-                it.time = getCurrentTime(System.currentTimeMillis())
-                it.date = getCurrentDate(System.currentTimeMillis())
+                it.time = CommonUtils.getCurrentDateTime()
+                it.date = CommonUtils.getCurrentDate()
                 it.mcc = "${removeNullFromString("${mcc}")}"
                 it.mnc = "${removeNullFromString("${mnc}")}"
                 it.lac = removeNullFromString("${this.lac}")
@@ -145,29 +150,35 @@ suspend fun ICell.prepareDate(
                 it.ta = removeNullFromString("${this.signal.timingAdvance}")
                 it.band = "${removeNullFromString(this.band?.name ?: "")}"
                 it.rxlev = removeNullFromString("${this.signal.rssi}")
-                it.rxQual = removeNullFromString("${this.signal.bitErrorRate?.let {rxQual -> this.calculateRXQUAL(rxQual)}}")
+                it.rxQual = removeNullFromString("${this.signal.bitErrorRate?.let {value -> calculateRXQUAL(
+                    value
+                )}}")
                 it.bitRateError = removeNullFromString("${this.signal.bitErrorRate}")
                 it.rssi = removeNullFromString("${this.signal.rssi}")
                 it.lattitude = locationPair.first
                 it.longitude = locationPair.second
-                it.dlspeed = speedPair.first
-                it.ulspeed = speedPair.second
+                it.dlspeed = speedPair.downloadSpeedKbps
+                it.ulspeed = speedPair.uploadSpeedKbps
                 it.deviceModel = "${Build.MODEL}"
                 it.data = if (hasMobileInternet) "Mobile" else "Wifi"
                 it.isDataCaptureOffline = false
-                it.isUserDeviceOnCall = false
+                it.isUserDeviceOnCall = isUserOnCall(context = context)
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
                 it.rtt = rtt
-                it.latency =latency }
+                it.latency =latency
+                it.totalUploadVolume=speedPair.totalUploadMB
+                it.totalDownloadVolume=speedPair.totalDownloadMB
+
+            }
         }
 
         is CellWcdma -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "3G",hasMobileInternet= hasMobileInternet,activeNetworkMnc = activeNetworkMnc, currentMnc = mnc)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "3G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc)
             return NetworkDataEntity().also {
-                it.time = getCurrentTime(System.currentTimeMillis())
-                it.date = getCurrentDate(System.currentTimeMillis())
+                it.time = CommonUtils.getCurrentDateTime()
+                it.date = CommonUtils.getCurrentDate()
                 it.mcc = "${removeNullFromString("${mcc}")}"
                 it.mnc = "${removeNullFromString("${mnc}")}"
                 it.lac = removeNullFromString("${this.lac}")
@@ -181,25 +192,27 @@ suspend fun ICell.prepareDate(
                 it.rssi = removeNullFromString("${this.signal.rssi}")
                 it.lattitude = locationPair.first
                 it.longitude = locationPair.second
-                it.dlspeed = speedPair.first
-                it.ulspeed = speedPair.second
+                it.dlspeed = speedPair.downloadSpeedKbps
+                it.ulspeed = speedPair.uploadSpeedKbps
                 it.deviceModel = "${Build.MODEL}"
                 it.data = if (hasMobileInternet)"Mobile" else "Wifi"
                 it.isDataCaptureOffline = false
-                it.isUserDeviceOnCall = false
+                it.isUserDeviceOnCall = isUserOnCall(context = context)
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
                 it.rtt = rtt
                 it.latency =latency
+                it.totalUploadVolume=speedPair.totalUploadMB
+                it.totalDownloadVolume=speedPair.totalDownloadMB
             }
         }
 
         is CellLte -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet,activeNetworkMnc = activeNetworkMnc, currentMnc = mnc)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc)
             return NetworkDataEntity().also {
-                it.time = getCurrentTime(System.currentTimeMillis())
-                it.date = getCurrentDate(System.currentTimeMillis())
+                it.time = CommonUtils.getCurrentDateTime()
+                it.date = CommonUtils.getCurrentDate()
                 it.mcc = "${removeNullFromString("${mcc}")}"
                 it.mnc = "${removeNullFromString("${mnc}")}"
                 it.tac = removeNullFromString("${this.tac}")
@@ -218,25 +231,27 @@ suspend fun ICell.prepareDate(
                 it.rssi = removeNullFromString("${this.signal.rssi}")
                 it.lattitude = locationPair.first
                 it.longitude = locationPair.second
-                it.dlspeed = speedPair.first
-                it.ulspeed = speedPair.second
+                it.dlspeed = speedPair.downloadSpeedKbps
+                it.ulspeed = speedPair.uploadSpeedKbps
                 it.deviceModel = "${Build.MODEL}"
                 it.data = if (hasMobileInternet)"Mobile" else "Wifi"
                 it.isDataCaptureOffline = false
-                it.isUserDeviceOnCall = false
+                it.isUserDeviceOnCall = isUserOnCall(context = context)
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
                 it.rtt = rtt
                 it.latency =latency
+                it.totalUploadVolume=speedPair.totalUploadMB
+                it.totalDownloadVolume=speedPair.totalDownloadMB
             }
         }
 
         is CellNr -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet,activeNetworkMnc = activeNetworkMnc, currentMnc = mnc)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc)
             return NetworkDataEntity().also {
-                it.time = getCurrentTime(System.currentTimeMillis())
-                it.date = getCurrentDate(System.currentTimeMillis())
+                it.time = CommonUtils.getCurrentDateTime()
+                it.date = CommonUtils.getCurrentDate()
                 it.mcc = "${removeNullFromString("${mcc}")}"
                 it.mnc = "${removeNullFromString("${mnc}")}"
                 it.tac = removeNullFromString("${this.tac}")
@@ -248,25 +263,27 @@ suspend fun ICell.prepareDate(
                 it.snr = removeNullFromString("${this.signal.ssSinr}")
                 it.lattitude = locationPair.first
                 it.longitude = locationPair.second
-                it.dlspeed = speedPair.first
-                it.ulspeed = speedPair.second
+                it.dlspeed = speedPair.downloadSpeedKbps
+                it.ulspeed = speedPair.uploadSpeedKbps
                 it.deviceModel = "${Build.MODEL}"
                 it.data = if (hasMobileInternet)"Mobile" else "Wifi"
                 it.isDataCaptureOffline = false
-                it.isUserDeviceOnCall = false
+                it.isUserDeviceOnCall = isUserOnCall(context = context)
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
                 it.rtt = rtt
                 it.latency =latency
+                it.totalUploadVolume=speedPair.totalUploadMB
+                it.totalDownloadVolume=speedPair.totalDownloadMB
             }
         }
 
         is CellTdscdma -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "3G",hasMobileInternet= hasMobileInternet,activeNetworkMnc = activeNetworkMnc, currentMnc = mnc)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "3G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc)
             return NetworkDataEntity().also {
-                it.time = getCurrentTime(System.currentTimeMillis())
-                it.date = getCurrentDate(System.currentTimeMillis())
+                it.time = CommonUtils.getCurrentDateTime()
+                it.date = CommonUtils.getCurrentDate()
                 it.mcc = "${removeNullFromString("${mcc}")}"
                 it.mnc = "${removeNullFromString("${mnc}")}"
                 it.lac = removeNullFromString("${this.cid}")
@@ -276,17 +293,19 @@ suspend fun ICell.prepareDate(
                 it.rssi = removeNullFromString("${this.signal.rssi}")
                 it.lattitude = locationPair.first
                 it.longitude = locationPair.second
-                it.dlspeed = speedPair.first
-                it.ulspeed = speedPair.second
+                it.dlspeed = speedPair.downloadSpeedKbps
+                it.ulspeed = speedPair.uploadSpeedKbps
                 it.deviceModel = "${Build.MODEL}"
                 it.data = if (hasMobileInternet)"Mobile" else "Wifi"
                 it.isDataCaptureOffline = false
-                it.isUserDeviceOnCall = false
+                it.isUserDeviceOnCall = isUserOnCall(context = context)
                 it.deviceManufacture ="${Build.MANUFACTURER}"
                 it.deviceOsVersion ="${Build.VERSION.SDK_INT}"
                 it.usedSimSlot= usedSimSlot
                 it.rtt = rtt
                 it.latency =latency
+                it.totalUploadVolume=speedPair.totalUploadMB
+                it.totalDownloadVolume=speedPair.totalDownloadMB
             }
         }
 
@@ -316,14 +335,6 @@ fun ResponseBody?.getTotalBytes(): Int {
     return size
 }
 
-private fun getCurrentTime(timestamp: Milliseconds?): String {
-    return "${SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(System.currentTimeMillis())}"
-}
-
-private fun getCurrentDate(timestamp: Milliseconds?): String {
-    return "${SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(System.currentTimeMillis())}"
-}
-
 private fun removeNullFromString(str: String): Int {
     return try {
         str.replace("null", "").toDouble().toInt()
@@ -332,7 +343,7 @@ private fun removeNullFromString(str: String): Int {
     }
 }
 
-private fun CellGsm.calculateRXQUAL(ber: Int): Int {
+private fun calculateRXQUAL(ber: Int): Int {
     return when {
         ber >= 0 && ber < 0.2 -> 0
         ber >= 0.2 && ber < 0.4 -> 1
@@ -343,6 +354,19 @@ private fun CellGsm.calculateRXQUAL(ber: Int): Int {
         ber >= 6.4 && ber < 12.8 -> 6
         ber >= 12.8 && ber <= 100 -> 7
         else -> 0
+    }
+}
+
+fun isUserOnCall(context: Context): Boolean {
+    return try {
+        val telephonyManager =
+            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+
+        telephonyManager.callState == TelephonyManager.CALL_STATE_RINGING ||
+                telephonyManager.callState == TelephonyManager.CALL_STATE_OFFHOOK
+
+    } catch (_: Exception) {
+        false
     }
 }
 
