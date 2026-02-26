@@ -427,7 +427,7 @@ class NetworkDataWorker(
             logsToSend.add(eventLogModel)
 
             // Send merged logs in a single request
-            apiService.postRetailerNetworkDataLogs(
+            apiService.postNetworkDataLogs(
                 LogDataWrapper(
                     auth,
                     ArrayList(logsToSend)

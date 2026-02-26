@@ -92,22 +92,22 @@ data class FTPNetworkDataEntity(
     @SerializedName("snr")
     var snr: Int = 0,
 
-    @SerializedName("eNodeB_Name")
+    @SerializedName("eNodeBName")
     var eNodeBName: String = "",
 
-    @SerializedName("Cell_Name")
+    @SerializedName("cellName")
     var cellName: String = "",
 
-    @SerializedName("eNodeB_ID")
+    @SerializedName("eNodeBId")
     var eNodeBId: Long = 0L,
 
-    @SerializedName("Sector")
+    @SerializedName("sector")
     var sector: Int = 0,
 
-    @SerializedName("NBH_DL_Throughput_Mbps")
+    @SerializedName("nbhDlThroughputMbps")
     var nbhDlThroughputMbps: Double = 0.0,
 
-    @SerializedName("NBH_Traffic_GB")
+    @SerializedName("nbhTrafficGb")
     var nbhTrafficGb: Double = 0.0
 
 ) : Parcelable

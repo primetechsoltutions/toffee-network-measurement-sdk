@@ -151,14 +151,14 @@ class NetworkDataUploader {
                                 WorkManager.getInstance(context).getWorkInfoByIdLiveData(workId)
                                     .observe(activity) { workInfo ->
                                         if (workInfo != null && workInfo.state.isFinished) {
-                                            val demoData = workInfo.outputData.getString("demo_data") ?: "Success"
+                                            val ftpHostAppResponse = workInfo.outputData.getString("hostAppResponse") ?: "FTP assessment failed,Please try again later."
                                             callback(
                                                 true, UploadStatus(
                                                     isSdkInit = true,
                                                     isLocationEnabled = true,
                                                     isPhoneStateGranted = true,
                                                     dataSaved = true,
-                                                    message = demoData
+                                                    message = ftpHostAppResponse
                                                 )
                                             )
                                         }

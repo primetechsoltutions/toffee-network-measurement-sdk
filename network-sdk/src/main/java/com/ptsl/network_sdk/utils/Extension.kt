@@ -210,7 +210,7 @@ suspend fun ICell.prepareDate(
         }
 
         is CellLte -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc, retryCountDownload = 2, retryCountUpload = 2)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= true, currentMnc = "3", activeNetworkMnc = "3", retryCountDownload = 2, retryCountUpload = 2)
             return NetworkDataEntity().also {
                 it.time = CommonUtils.getCurrentDateTime()
                 it.date = CommonUtils.getCurrentDate()
@@ -340,8 +340,8 @@ suspend fun ICell.prepareFTPData(
         hasMobileInternet = true,
         currentMnc = "3",
         activeNetworkMnc = "3",
-        retryCountDownload = 3,
-        retryCountUpload = 3
+        retryCountDownload = 2,
+        retryCountUpload = 2
     )
 
     return FTPNetworkDataEntity().also {

@@ -14,8 +14,11 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.google.gson.Gson
 import com.ptsl.network_sdk.api.ApiService
+import com.ptsl.network_sdk.data_model.FTPCellInfoGetDataRequest
 import com.ptsl.network_sdk.data_model.FTPNetworkDataRequest
+import com.ptsl.network_sdk.data_model.NetworkDataRequest
 import com.ptsl.network_sdk.data_model.entity.AuthEntity
+import com.ptsl.network_sdk.data_model.entity.FTPCellInfoGetRequest
 import com.ptsl.network_sdk.data_model.entity.FTPNetworkDataEntity
 import com.ptsl.network_sdk.db.NetworkDao
 import com.ptsl.network_sdk.dl_ul_test.DownloadUploadHelper
@@ -53,17 +56,6 @@ class FTPNetworkDataWorker (
 
             // 2. Network data (Single Object with MNC filtering)
             val ftpData = getReqData(locationPair)
-            
-            // Check if capture was skipped due to MNC mismatch
-//            if (ftpData.technologyType == "SKIP_MNC_MISMATCH") {
-//                val demoResult = workDataOf("demo_data" to "Capture skipped: Mobile data MNC mismatch (Target: 03/3)")
-//                return Result.success(demoResult)
-//            }
-//
-//            if (ftpData.mnc.isEmpty() || ftpData.mnc == "0" || ftpData.mnc == "00") {
-//                val demoResult = workDataOf("demo_data" to "Capture failed: No primary cell matched MNC 03/3")
-//                return Result.success(demoResult)
-//            }
 
             ftpData.integratedAppEventName = integratedAppEventName
             ftpData.msisdn = msisdn
@@ -72,20 +64,21 @@ class FTPNetworkDataWorker (
             ftpData.userLongitude = userLongitude
             ftpData.integratedAppVersion = integratedAppVersion
 
-            Log.d("mergeData", msisdn)
+            Log.d("msisdn", msisdn)
 
+//            throw Exception()
             // 3. Enrich data with Cell Info API
             try {
                 if (ftpData.cid != 0 && ftpData.enb != 0) {
-                    val enrichmentRequest = com.ptsl.network_sdk.data_model.FTPCellInfoGetDataRequest(
+                    val enrichmentRequest = FTPCellInfoGetDataRequest(
                         auth = authEntity,
-                        data = com.ptsl.network_sdk.data_model.entity.FTPCellInfoGetRequest(
+                        data = FTPCellInfoGetRequest(
                             eNB = ftpData.enb,
                             cID = ftpData.cid
                         )
                     )
                     val enrichmentResponse = apiService.postFTPCellInfo(enrichmentRequest)
-                    if (enrichmentResponse.statusCode==200 && enrichmentResponse.data != null) {
+                    if (enrichmentResponse.statusCode==200 && enrichmentResponse.data.isNotEmpty()) {
                         val cellInfo = enrichmentResponse.data.first()
                         ftpData.apply {
                             eNodeBName = cellInfo.eNodeBName
@@ -103,10 +96,14 @@ class FTPNetworkDataWorker (
             } catch (e: Exception) {
                 Log.e("FTPNetworkDataWorker", "⚠️ Enrichment Error: ${e.message}")
             }
+            val response = apiService.postFTPNetworkData(
+                FTPNetworkDataRequest(
+                    auth = authEntity,
+                    data = ftpData
+                )
+            )
 
             // 4. Send network data (Single Object)
-
-            // ----- demo data
             // Evaluate pass/fail conditions
             val isRsrpPass = Math.abs(ftpData.rsrp) <= 105
             val isDlSpeedPass = ftpData.dlSpeed > 5000.0 // > 5 MB (Kbps)
@@ -125,6 +122,7 @@ class FTPNetworkDataWorker (
                 "statusCode" to statusCode,
                 "message" to messageStr,
                 "data" to mapOf(
+                    "assessmentId" to response.data.assessmentId,
                     "networkData" to mapOf(
                         "RSRP" to ftpData.rsrp,
                         "SNR" to ftpData.snr,
@@ -145,8 +143,8 @@ class FTPNetworkDataWorker (
                         "deviceManufacture" to ftpData.deviceManufacture,
                         "deviceModel" to ftpData.deviceModel,
                         "deviceOsVersion" to ftpData.deviceOsVersion,
-                        "latitude" to ftpData.userLatitude,
-                        "longitude" to ftpData.userLongitude
+                        "latitude" to ftpData.latitude,
+                        "longitude" to ftpData.longitude
                     )
                 )
             )
@@ -154,7 +152,7 @@ class FTPNetworkDataWorker (
             // Serialize the captured data to return to host app
             val gson = Gson()
             val capturedDataJson = gson.toJson(responseMap)
-            val demoResult = workDataOf("demo_data" to capturedDataJson)
+            val demoResult = workDataOf("hostAppResponse" to capturedDataJson)
             Log.e("FTPNetworkDataWorker", "Captured FTP Data: $capturedDataJson")
             Result.success(demoResult)
 

@@ -8,5 +8,5 @@ import com.ptsl.network_sdk.data_model.entity.FTPNetworkDataEntity
 @Keep
 data class FTPNetworkDataRequest (
     @SerializedName("networkUserModel" ) var auth : AuthEntity,
-    @SerializedName("networkMeasurementRequestModel" ) var data : FTPNetworkDataEntity,
+    @SerializedName("assessmentData" ) var data : FTPNetworkDataEntity,
 )
