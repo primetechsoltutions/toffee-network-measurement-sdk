@@ -11,20 +11,27 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.ptsl.network_sdk.data_model.UploadStatus
 import com.ptsl.network_sdk.data_model.entity.AuthEntity
+import com.ptsl.network_sdk.network_data_worker.FTPNetworkDataWorker
 import com.ptsl.network_sdk.network_data_worker.NetworkDataWorker
 import com.ptsl.network_sdk.utils.CheckPermissionHandler
+import com.ptsl.network_sdk.utils.NetworkSdk
 import com.ptsl.network_sdk.utils.SdkContainer
 import kotlinx.coroutines.launch
 
 
 class NetworkDataUploader {
+    private lateinit var activity: AppCompatActivity
     private lateinit var checkPermissionHandler: CheckPermissionHandler
     private lateinit var context: Context
+    private  lateinit var applicationName: String
 
 
-    fun init(activity: AppCompatActivity) {
+    fun init(activity: AppCompatActivity, applicationName: String) {
+        this.activity = activity
         checkPermissionHandler = CheckPermissionHandler(activity)
         context = activity.applicationContext
+        this.applicationName =applicationName
+        NetworkSdk.init(activity.applicationContext)
     }
 
     fun startUploading(
@@ -34,77 +41,130 @@ class NetworkDataUploader {
         integratedAppEventName: String,
         userLatitude: Double = 0.0,
         userLongitude: Double = 0.0,
+        uploadType: UploadType,
         callback: (Boolean, UploadStatus) -> Unit
     ) {
+        Log.e("Value","uploadType: $uploadType")
         if (this::checkPermissionHandler.isInitialized /*&& checkPermissionHandler.isPermissionGranted()*/) {
 
             requestPermission { isGranted ->
-                if (isGranted) {
-                    SdkContainer.coroutineScope.launch {
-                        val auth = AuthEntity(
-                            sdkVersion = BuildConfig.SdkVersion,
-                            isSdkInitialized = this@NetworkDataUploader::checkPermissionHandler.isInitialized,
-                            isLocationEnabled = checkPermissionHandler.isLocationPermissionGranted(),
-                            isPhoneStateEnabled = checkPermissionHandler.isLocationPermissionGranted()
-                        )
-                        SdkContainer.dao.insertAuthData(auth)
-                        enqueueNetworkDataWork(
-                            auth,
-                            msisdn = msisdn,
-                            integratedAppVersion = integratedAppVersion,
-                            sdkInitiateTimeStamp = sdkInitiateTimeStamp,
-                            integratedAppEventName = integratedAppEventName,
-                            userLatitude = userLatitude,
-                            userLongitude = userLongitude,
+                when (uploadType){
+                    UploadType.NetworkDataCapture -> {
+                        Log.e("uploadType","uploadType: NetworkDataCapture")
+                        if (isGranted) {
+                            SdkContainer.coroutineScope.launch {
+                                val auth = AuthEntity(
+                                    sdkVersion = BuildConfig.SdkVersion,
+                                    isSdkInitialized = this@NetworkDataUploader::checkPermissionHandler.isInitialized,
+                                    isLocationEnabled = checkPermissionHandler.isLocationPermissionGranted(),
+                                    isPhoneStateEnabled = checkPermissionHandler.isLocationPermissionGranted(),
+                                    hostAppName = applicationName
+                                )
+                                SdkContainer.dao.insertAuthData(auth)
+                                enqueueNetworkDataWork(
+                                    auth,
+                                    msisdn = msisdn,
+                                    integratedAppVersion = integratedAppVersion,
+                                    sdkInitiateTimeStamp = sdkInitiateTimeStamp,
+                                    integratedAppEventName = integratedAppEventName,
+                                    userLatitude = userLatitude,
+                                    userLongitude = userLongitude,
+                                    type = uploadType
+                                    )
+                                callback(
+                                    true, UploadStatus(
+                                        isSdkInit = true,
+                                        isLocationEnabled = true,
+                                        isPhoneStateGranted = true,
+                                        dataSaved = true,
+                                        message = "SDK Initialized Successfully"
+                                    )
+                                )
+                            }
 
-                        )
-                        callback(
-                            true, UploadStatus(
-                                isSdkInit = true,
-                                isLocationEnabled = true,
-                                isPhoneStateGranted = true,
-                                dataSaved = true,
-                                message = "SDK Initialized Successfully"
-                            )
-                        )
+                        }
+                        else {
+                            SdkContainer.coroutineScope.launch {
+                                val auth = AuthEntity(
+                                    sdkVersion = BuildConfig.SdkVersion,
+                                    isSdkInitialized = this@NetworkDataUploader::checkPermissionHandler.isInitialized,
+                                    isLocationEnabled = checkPermissionHandler.isLocationPermissionGranted(),
+                                    isPhoneStateEnabled = checkPermissionHandler.isLocationPermissionGranted()
+                                )
+                                SdkContainer.dao.insertAuthData(auth)
+                                Log.d(
+                                    "isSdkInitialized",
+                                    this@NetworkDataUploader::checkPermissionHandler.isInitialized.toString()
+                                )
+                                Log.d(
+                                    "isLocationEnabled",
+                                    checkPermissionHandler.isLocationPermissionGranted().toString()
+                                )
+                                Log.d("isPhoneStateEnabled", checkPermissionHandler.isLocationPermissionGranted().toString())
+                                enqueueNetworkDataWork(
+                                    auth,
+                                    msisdn = msisdn,
+                                    integratedAppVersion = integratedAppVersion,
+                                    sdkInitiateTimeStamp = sdkInitiateTimeStamp,
+                                    integratedAppEventName = integratedAppEventName,
+                                    userLatitude = userLatitude,
+                                    userLongitude = userLongitude,
+                                    type = uploadType
+                                )
+                                callback(
+                                    true, UploadStatus(
+                                        isSdkInit = true,
+                                        isLocationEnabled = false,
+                                        isPhoneStateGranted = false,
+                                        dataSaved = true,
+                                        message = "SDK Initialized Successfully"
+                                    )
+                                )
+                            }
+                        }
+
                     }
-                }
-                else {
-                    SdkContainer.coroutineScope.launch {
-                        val auth = AuthEntity(
-                            sdkVersion = BuildConfig.SdkVersion,
-                            isSdkInitialized = this@NetworkDataUploader::checkPermissionHandler.isInitialized,
-                            isLocationEnabled = checkPermissionHandler.isLocationPermissionGranted(),
-                            isPhoneStateEnabled = checkPermissionHandler.isLocationPermissionGranted()
-                        )
-                        SdkContainer.dao.insertAuthData(auth)
-                        Log.d(
-                            "isSdkInitialized",
-                            this@NetworkDataUploader::checkPermissionHandler.isInitialized.toString()
-                        )
-                        Log.d(
-                            "isLocationEnabled",
-                            checkPermissionHandler.isLocationPermissionGranted().toString()
-                        )
-                        Log.d("isPhoneStateEnabled", checkPermissionHandler.isLocationPermissionGranted().toString())
-                        enqueueNetworkDataWork(
-                            auth,
-                            msisdn = msisdn,
-                            integratedAppVersion = integratedAppVersion,
-                            sdkInitiateTimeStamp = sdkInitiateTimeStamp,
-                            integratedAppEventName = integratedAppEventName,
-                            userLatitude = userLatitude,
-                            userLongitude = userLongitude
-                        )
-                        callback(
-                            true, UploadStatus(
-                                isSdkInit = true,
-                                isLocationEnabled = false,
-                                isPhoneStateGranted = false,
-                                dataSaved = true,
-                                message = "SDK Initialized Successfully"
+                    UploadType.FTPNetworkDataCapture -> {
+                        Log.e("uploadType","uploadType: FTPNetworkDataCapture")
+                        SdkContainer.coroutineScope.launch {
+                            val auth = AuthEntity(
+                                sdkVersion = BuildConfig.SdkVersion,
+                                isSdkInitialized = this@NetworkDataUploader::checkPermissionHandler.isInitialized,
+                                isLocationEnabled = checkPermissionHandler.isLocationPermissionGranted(),
+                                isPhoneStateEnabled = checkPermissionHandler.isLocationPermissionGranted(),
+                                hostAppName = applicationName
                             )
-                        )
+                            SdkContainer.dao.insertAuthData(auth)
+                            val workId = enqueueNetworkDataWork(
+                                auth,
+                                msisdn = msisdn,
+                                integratedAppVersion = integratedAppVersion,
+                                sdkInitiateTimeStamp = sdkInitiateTimeStamp,
+                                integratedAppEventName = integratedAppEventName,
+                                userLatitude = userLatitude,
+                                userLongitude = userLongitude,
+                                type = uploadType
+                            )
+
+                            // Observe the work to trigger the callback when finished
+                            activity.runOnUiThread {
+                                WorkManager.getInstance(context).getWorkInfoByIdLiveData(workId)
+                                    .observe(activity) { workInfo ->
+                                        if (workInfo != null && workInfo.state.isFinished) {
+                                            val demoData = workInfo.outputData.getString("demo_data") ?: "Success"
+                                            callback(
+                                                true, UploadStatus(
+                                                    isSdkInit = true,
+                                                    isLocationEnabled = true,
+                                                    isPhoneStateGranted = true,
+                                                    dataSaved = true,
+                                                    message = demoData
+                                                )
+                                            )
+                                        }
+                                    }
+                            }
+                        }
                     }
                 }
 
@@ -143,7 +203,8 @@ class NetworkDataUploader {
         integratedAppEventName: String,
         userLatitude: Double = 0.0,
         userLongitude: Double = 0.0,
-    ) {
+        type: UploadType,
+    ): java.util.UUID {
 
         val inputData = workDataOf(
             "msisdn" to msisdn,
@@ -158,9 +219,17 @@ class NetworkDataUploader {
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .setRequiresBatteryNotLow(true)
             .build()
-        val workRequest = OneTimeWorkRequestBuilder<NetworkDataWorker>().setConstraints(constraints)
-            .setInputData(inputData)
-            .build()
+        val workRequest = when (type) {
+            UploadType.NetworkDataCapture -> OneTimeWorkRequestBuilder<NetworkDataWorker>().setConstraints(constraints).setInputData(inputData).build()
+
+            UploadType.FTPNetworkDataCapture -> OneTimeWorkRequestBuilder<FTPNetworkDataWorker>().setConstraints(constraints).setInputData(inputData).build()
+        }
         WorkManager.getInstance(context).enqueue(workRequest)
+        return workRequest.id
     }
+}
+enum class UploadType {
+    NetworkDataCapture,
+    FTPNetworkDataCapture,
+
 }

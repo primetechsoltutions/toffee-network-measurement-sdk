@@ -21,6 +21,7 @@ import java.util.Locale
 
 import android.content.Context
 import android.telephony.TelephonyManager
+import com.ptsl.network_sdk.data_model.entity.FTPNetworkDataEntity
 
 fun Calendar.parseTime(time: String): Pair<Int, Int> {
     return try {
@@ -209,7 +210,7 @@ suspend fun ICell.prepareDate(
         }
 
         is CellLte -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc, retryCountDownload = 2, retryCountUpload = 2)
             return NetworkDataEntity().also {
                 it.time = CommonUtils.getCurrentDateTime()
                 it.date = CommonUtils.getCurrentDate()
@@ -248,7 +249,7 @@ suspend fun ICell.prepareDate(
         }
 
         is CellNr -> {
-            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc)
+            val speedPair = downloader.getBandWidthSpeed(networkType = "4G",hasMobileInternet= hasMobileInternet, currentMnc = mnc, activeNetworkMnc = activeNetworkMnc, retryCountDownload = 2, retryCountUpload = 2)
             return NetworkDataEntity().also {
                 it.time = CommonUtils.getCurrentDateTime()
                 it.date = CommonUtils.getCurrentDate()
@@ -310,6 +311,78 @@ suspend fun ICell.prepareDate(
         }
 
         else -> NetworkDataEntity()
+    }
+}
+
+suspend fun ICell.prepareFTPData(
+    locationPair: Pair<Double, Double>,
+    downloader: DownloadUploadHelper,
+    hasMobileInternet: Boolean = false,
+    activeNetworkMnc: String = "-1",
+    usedSimSlot: Int = 0,
+    context: Context
+): FTPNetworkDataEntity {
+    val mcc = this.network?.mcc
+    val mnc = this.network?.mnc
+    val deviceManufacture = Build.MANUFACTURER
+    val deviceModel = Build.MODEL
+    val deviceOsVersion = Build.VERSION.SDK_INT.toString()
+    val type = when (this) {
+        is CellGsm -> "2G"
+        is CellWcdma, is CellTdscdma -> "3G"
+        is CellLte -> "4G"
+        is CellNr -> "5G"
+        else -> "Unknown"
+    }
+
+    val speedPair = downloader.getBandWidthSpeed(
+        networkType = type,
+        hasMobileInternet = true,
+        currentMnc = "3",
+        activeNetworkMnc = "3",
+        retryCountDownload = 3,
+        retryCountUpload = 3
+    )
+
+    return FTPNetworkDataEntity().also {
+        it.date = CommonUtils.getCurrentDate()
+        it.mcc = removeNullFromString("$mcc").toString()
+        it.mnc = removeNullFromString("$mnc").toString()
+        it.technologyType = type
+        it.band = removeNullFromString(this.band?.name ?: "").toString()
+        it.latitude = locationPair.first
+        it.longitude = locationPair.second
+        it.dlSpeed = speedPair.downloadSpeedKbps
+        it.ulSpeed = speedPair.uploadSpeedKbps
+        it.deviceManufacture = deviceManufacture
+        it.deviceModel = deviceModel
+        it.deviceOsVersion = deviceOsVersion
+        it.internetConnectivityType = if (hasMobileInternet) "Mobile" else "Wifi"
+        it.totalUploadVolume = speedPair.totalUploadMB
+        it.totalDownloadVolume = speedPair.totalDownloadMB
+
+        when (this) {
+            is CellGsm -> {
+                it.cid = removeNullFromString("${this.cid}")
+            }
+            is CellWcdma -> {
+                it.cid = removeNullFromString("${this.cid}")
+            }
+            is CellLte -> {
+                it.cid = removeNullFromString("${this.cid}")
+                it.enb = removeNullFromString("${this.enb}")
+                it.tac = removeNullFromString("${this.tac}")
+                it.rsrp = removeNullFromString("${this.signal.rsrp}")
+                it.rsrq = removeNullFromString("${this.signal.rsrq}")
+                it.snr = removeNullFromString("${this.signal.snr}")
+            }
+            is CellNr -> {
+                it.tac = removeNullFromString("${this.tac}")
+                it.rsrp = removeNullFromString("${this.signal.ssRsrp}")
+                it.rsrq = removeNullFromString("${this.signal.ssRsrq}")
+                it.snr = removeNullFromString("${this.signal.ssSinr}")
+            }
+        }
     }
 }
 

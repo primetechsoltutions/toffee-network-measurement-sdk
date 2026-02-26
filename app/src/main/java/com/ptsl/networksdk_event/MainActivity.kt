@@ -12,6 +12,7 @@ import kotlinx.coroutines.FlowPreview
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
+import com.ptsl.network_sdk.UploadType
 
 
 class MainActivity : AppCompatActivity() {
@@ -20,10 +21,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        NetworkSdk.init(this)
-
-        networkDataUploader.init(this)
+        networkDataUploader.init(this,"ReTaiLer")
 
         val currentDate = SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
@@ -46,7 +44,7 @@ class MainActivity : AppCompatActivity() {
                 "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
             ).format(System.currentTimeMillis())
 
-            uploadData("MYBL-1000111", currentDate, "Button-1")
+            uploadData("MYBL-1000111", currentDate, "Button-1",UploadType.NetworkDataCapture)
 
         }
 
@@ -54,26 +52,7 @@ class MainActivity : AppCompatActivity() {
             val currentDate = SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()
             ).format(System.currentTimeMillis())
-//            networkDataUploader.requestPermission { success ->
-//                if (success) {
-//                    networkDataUploader.startUploading(
-//                        "MYBL-101",
-//                        "10.0.0",
-//                        currentDate,
-//                        "Event-22",
-//                    ) { success, status ->
-//                        if (success) {
-//                            Log.i("UploadStatus", "SDK started successfully for Event-2")
-//                        } else {
-//                            Log.e("UploadStatus", "SDK failed to start for Event-2")
-//                        }
-//                    }
-//                } else {
-//                    Log.e("Permission", "Required permissions not granted")
-//                }
-//
-//            }
-            uploadData("MYBL-1023", currentDate, "Button-2")
+            uploadData("MYBL-1023", currentDate, "Button-2",UploadType.FTPNetworkDataCapture)
 
         }
 
@@ -81,24 +60,31 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun uploadData(msisdn: String, currentDate: String, eventName: String) {
-//        networkDataUploader.requestPermission { success ->
-//            if (success) {
-//
-//            } else {
-//                Log.e("Permission", "Required permissions not granted")
-//            }
-//        }
+    private fun uploadData(msisdn: String, currentDate: String, eventName: String, uploadType: UploadType) {
+        val progressBar = findViewById<android.widget.ProgressBar>(R.id.progressBar)
+        val resultTextView = findViewById<android.widget.TextView>(R.id.resultTextView)
+        
+        if (uploadType == UploadType.FTPNetworkDataCapture) {
+            progressBar.visibility = android.view.View.VISIBLE
+            resultTextView.text = "Starting FTP data capture (1 min delay)...\n"
+        }
+
         networkDataUploader.startUploading(
             msisdn,
             "10.0.0",
             currentDate,
-            eventName
+            eventName,
+            uploadType = uploadType
         ) { success, status ->
-            if (success) {
-                Log.i("UploadStatus", "SDK started successfully for $eventName Response: ${status.message}")
-            } else {
-                Log.e("UploadStatus", "SDK failed to start for $eventName Response: ${status.message}")
+            runOnUiThread {
+                progressBar.visibility = android.view.View.GONE
+                if (success) {
+                    Log.i("UploadStatus", "SDK finished successfully for $eventName. Data: ${status.message}")
+                    resultTextView.text = "Success for $eventName:\n${status.message}"
+                } else {
+                    Log.e("UploadStatus", "SDK failed for $eventName. Error: ${status.message}")
+                    resultTextView.text = "Failed for $eventName:\n${status.message}"
+                }
             }
         }
     }

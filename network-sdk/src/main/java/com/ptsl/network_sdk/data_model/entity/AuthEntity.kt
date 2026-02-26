@@ -15,19 +15,11 @@ import kotlinx.parcelize.Parcelize
 data class AuthEntity(
     @PrimaryKey(autoGenerate = false)
     @SerializedName("apiKey") var apiKey: String = BuildConfig.TOKEN,
-    @SerializedName("userType") var userType: Int = 1001,
+    @SerializedName("userType") var userType: Int = 0,
     @SerializedName("sdkVersion") var sdkVersion: String = "",
 
     @SerializedName("isSdkInitialized") var isSdkInitialized: Boolean = false,
     @SerializedName("isLocationEnabled") var isLocationEnabled: Boolean = false,
     @SerializedName("isPhoneStateEnabled") var isPhoneStateEnabled: Boolean = false,
-
-    /// skip for v902
-
-//    @SerializedName("msisdn") var msisdn: String = "",
-//    @SerializedName("sdkInitiateTimeStamp") var sdkInitiateTimeStamp: String = "",
-//    @SerializedName("integratedAppVersion") var integratedAppVersion: String = "",
-//    @SerializedName("integratedAppEventName") var integratedAppEventName: String = "Event",
-//    @SerializedName("userLatitude") var userLatitude: Double = 0.0,
-//    @SerializedName("userLongitude") var userLongitude: Double = 0.0
+    @SerializedName("hostAppName") var hostAppName: String = "",
 ) : Parcelable
